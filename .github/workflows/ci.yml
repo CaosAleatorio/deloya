@@ -1,0 +1,56 @@
+name: Validate marketplace
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run build
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: deloya_test
+          POSTGRES_USER: deloya
+          POSTGRES_PASSWORD: ci-only-disposable-password
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd 'pg_isready -U deloya -d deloya_test'
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgresql+psycopg://deloya:ci-only-disposable-password@localhost:5433/deloya_test
+      DATABASE_DIRECT_URL: postgresql+psycopg://deloya:ci-only-disposable-password@localhost:5433/deloya_test
+      TEST_DATABASE_URL: postgresql+psycopg://deloya:ci-only-disposable-password@localhost:5433/deloya_test
+      JWT_SECRET: ci-ephemeral-secret-for-isolated-tests-only-0123456789
+      ENVIRONMENT: test
+      PAYMENT_MODE: demo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install -e '.[test]'
+      - run: alembic upgrade head
+      - run: python -m pytest -q
