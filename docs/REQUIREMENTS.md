@@ -2,18 +2,18 @@
 
 ## Contexto
 
-Protótipo académico multivendedor para Deloya Serviços e Comércios, Nampula. A marca é provisória. O objectivo é desenvolver e permitir avaliar o sistema durante 2027; não se afirma impacto comprovado nas vendas.
+Marketplace multivendedor de produtos e serviços para Deloya Serviços e Comércios, Nampula, Moçambique. Projecto de Adelino Fonseca João, 2026. O sistema reúne clientes, vendedores e administração numa aplicação com dados persistentes e acesso por papel e titularidade.
 
 ## Actores
 
 | Actor | Permissões principais | Restrição |
 | --- | --- | --- |
 | Visitante | Catálogo, pesquisa, categorias, lojas e detalhes publicados | Sem acesso a encomendas privadas |
-| Cliente | Perfil, moradas, carrinho, encomendas e pagamentos de demonstração elegíveis | Apenas recursos próprios |
+| Cliente | Perfil, moradas, carrinho, encomendas e pagamentos de teste elegíveis | Apenas recursos próprios |
 | Vendedor | Candidatura, loja aprovada, anúncios e subencomendas próprios | Sem editar dados de outra loja |
 | Administrador | Aprovação, moderação, categorias, encomendas, reclamações e relatórios | Acções críticas auditadas |
 
-## Prioridades do MVP
+## Requisitos principais
 
 1. API e PostgreSQL como fonte dos dados operacionais; nenhuma lista fixa do frontend substitui uma API indisponível.
 2. Registo/login e autorização aplicada no backend, inclusive para UUIDs manipulados.
@@ -21,8 +21,8 @@ Protótipo académico multivendedor para Deloya Serviços e Comércios, Nampula.
 4. Produtos com stock e serviços sem stock físico; preço em meticais, calculado no servidor.
 5. Carrinho persistente com várias lojas; encomenda principal e subencomendas separadas.
 6. Reserva transaccional de stock, snapshots e tratamento consistente de cancelamento/falha.
-7. Pagamentos de demonstração explícitos, idempotentes e restritos a dados demonstrativos.
-8. Métricas da base de dados e separação entre demonstração e operação real.
+7. Pagamentos de teste explícitos, idempotentes e restritos a dados de teste.
+8. Métricas da base de dados e separação entre dados de teste e dados de operação.
 9. Documentação, testes essenciais, migrações e arranque reprodutível.
 
 ## Fluxos essenciais
@@ -35,7 +35,7 @@ Protótipo académico multivendedor para Deloya Serviços e Comércios, Nampula.
 
 **Serviço:** cliente consulta preço base ou «sob consulta» → pede confirmação ao vendedor e, quando aplicável, indica data pretendida. Não existe promessa de agenda sincronizada em tempo real. Um serviço sob consulta requer acordo de preço antes de entrar num fluxo de pagamento.
 
-**Pagamento:** encomenda demonstrativa elegível → tentativa com chave de idempotência → simulação de sucesso/falha/expiração → estado persistido no servidor. Repetições não geram novo débito de stock. Provedores reais permanecem bloqueados.
+**Pagamento de teste:** encomenda de teste elegível → tentativa com chave de idempotência → cenário de sucesso/falha/expiração → estado persistido no servidor. Repetições não geram novo débito de stock. O aviso de ausência de movimentação de dinheiro acompanha o fluxo e os documentos. Provedores reais permanecem bloqueados.
 
 **Processamento:** vendedor consulta apenas a sua subencomenda → avança conforme transições autorizadas → cliente acompanha estado agregado. Não se simula GPS ou transportadora.
 
@@ -43,8 +43,8 @@ Protótipo académico multivendedor para Deloya Serviços e Comércios, Nampula.
 
 ## Critérios transversais
 
-Interface pt-MZ, valores MZN/MT, datas dd/mm/aaaa em Africa/Maputo e armazenamento UTC. Formulários com rótulos, erros compreensíveis, foco visível e navegação por teclado. Listagens paginadas. Segredos fora do Git e de variáveis públicas do Next.js. Deploy comercial, credenciais financeiras, política de armazenamento, tarifas e branding dependem de validação institucional.
+Interface pt-MZ, valores MZN/MT, datas dd/mm/aaaa em Africa/Maputo e armazenamento UTC. Formulários com rótulos, erros compreensíveis, foco visível e navegação por teclado. Listagens paginadas. Segredos fora do Git e de variáveis públicas do Next.js. A publicação requer configuração de alojamento, revisão dos textos de operação e verificação das integrações utilizadas.
 
-## Fora do âmbito autorizado
+## Integrações e extensões
 
-Não se implementam desembolsos automáticos, divisão real de fundos, recolha de PIN, resultados de investigação fabricados, transportadoras fictícias ou taxas de entrega inventadas. Credenciais de serviços pagos não são criadas. Capacidades dependentes de serviços externos são descritas em [LIMITATIONS.md](LIMITATIONS.md).
+Desembolsos automáticos, divisão real de fundos, transportadoras e cálculo automático de tarifas não estão implementados. A aplicação não recolhe PIN de carteira móvel. Capacidades dependentes de serviços externos são descritas em [LIMITATIONS.md](LIMITATIONS.md).

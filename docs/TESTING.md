@@ -13,7 +13,7 @@ npm test
 npm run build
 ```
 
-Lint e TypeScript verificam problemas estáticos; build confirma a compilação. Testes essenciais devem validar o contrato HTTP/CSRF e a apresentação de demonstração quando aplicável. Estes comandos não demonstram, por si só, que a navegação móvel funciona num browser.
+Lint e TypeScript verificam problemas estáticos; build confirma a compilação. Testes essenciais devem validar o contrato HTTP/CSRF e a identificação de dados de teste quando aplicável. A navegação móvel é verificada separadamente num browser.
 
 ## Backend
 
@@ -24,7 +24,7 @@ docker compose exec -T db createdb -U deloya deloya_test
 ./.venv/Scripts/python.exe scripts/test-backend.py -q
 ```
 
-Se `deloya_test` já existir, não repetir `createdb`. Para PostgreSQL nativo, criar a base com as ferramentas locais e manter as URLs correctas. `TEST_DATABASE_URL`, quando definida explicitamente, substitui a derivação; tanto o helper como a fixture exigem PostgreSQL e nome terminado em `_test`. **As tabelas da base indicada são limpas entre testes.** Nunca apontar esta variável a dados a preservar. O comando directo `python -m pytest -q` em `backend/` requer a variável correctamente exportada; sem ela, os testes de integração podem ser ignorados, o que não demonstra sucesso.
+Se `deloya_test` já existir, não repetir `createdb`. Para PostgreSQL nativo, criar a base com as ferramentas locais e manter as URLs correctas. `TEST_DATABASE_URL`, quando definida explicitamente, substitui a derivação; tanto o helper como a fixture exigem PostgreSQL e nome terminado em `_test`. **As tabelas da base indicada são limpas entre testes.** Nunca apontar esta variável a dados a preservar. O comando directo `python -m pytest -q` em `backend/` requer a variável correctamente exportada; sem ela, os testes de integração podem ser ignorados, o que não comprova sucesso.
 
 Os testes de segurança/negócio abrangem registo, login/logout, JWT inválido/expirado, refresh replay, CSRF, loja pendente, IDOR cliente/vendedor, total no servidor, carrinho multivendedor, stock concorrente, cancelamento e pagamentos repetidos/falhados conforme os ficheiros da suite. Concorrência precisa de transacções PostgreSQL reais; SQLite ou mocks não comprovam bloqueio de stock.
 
@@ -34,7 +34,7 @@ O teste de relatórios deve incluir encomendas junto da meia-noite de Maputo: 22
 
 ### Testes opcionais no navegador
 
-Com a API, PostgreSQL e frontend locais em execução, num ambiente de demonstração com o seed carregado, executar na raiz:
+Com a API, PostgreSQL e frontend locais em execução, num ambiente de teste com o seed carregado, executar na raiz:
 
 ```powershell
 npm install --prefix .local/browser-qa --no-audit --no-fund playwright @axe-core/playwright
@@ -42,11 +42,14 @@ $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path (Get-Location) '.local/browsers'
 ./.local/browser-qa/node_modules/.bin/playwright.cmd install chromium
 node scripts/browser-smoke.mjs
 node scripts/accessibility-smoke.mjs
+node scripts/auth-form-regression.mjs
 ```
 
-O teste funcional cria uma conta e uma encomenda **demonstrativas**, percorre as áreas de cliente, vendedor e administrador, e verifica a navegação móvel. Recusa produtos sem o indicador demonstrativo. Usa `DEMO_PASSWORD` apenas do `.env` privado, sem a imprimir. `--panels-only` permite rever as páginas de gestão sem repetir a compra. Capturas e relatórios ficam em `.local/browser-results/`, fora do Git. `QA_BASE_URL` permite mudar a origem de testes explicitamente.
+O teste funcional cria uma conta e uma encomenda **de teste**, percorre as áreas de cliente, vendedor e administrador, e verifica a navegação móvel. Recusa produtos sem o indicador interno `is_demo`. Usa `DEMO_PASSWORD` apenas do `.env` privado, sem a imprimir. `--panels-only` permite rever as páginas de gestão sem repetir a compra. Capturas e relatórios ficam em `.local/browser-results/`, fora do Git. `QA_BASE_URL` permite mudar a origem de testes explicitamente.
 
-A análise axe verifica quatro páginas em larguras de 1440 e 390 px. Um resultado sem violações automáticas não substitui avaliação manual de acessibilidade ou os testes de utilizadores da monografia.
+A análise axe verifica quatro páginas em larguras de 1440 e 390 px. Um resultado sem violações automáticas deve ser complementado por avaliação manual de acessibilidade.
+
+A regressão dos formulários verifica login e registo com JavaScript activo e desactivado, incluindo uma submissão nativa forçada que deve usar POST e nunca credenciais na query string. As respostas de autenticação deste script são simuladas e não criam contas na base de dados. Para testar a hidratação num IP da rede, configurar as origens conforme o README e definir `QA_BASE_URL` para esse endereço antes de executar o script.
 
 | Cenário | Verificação | Evidência a recolher |
 | --- | --- | --- |
@@ -55,11 +58,11 @@ A análise axe verifica quatro páginas em larguras de 1440 e 390 px. Um resulta
 | Teclado | Skip link, foco, labels, modal e botões operáveis | Grelha de tarefas |
 | API indisponível | Erro honesto e opção de tentar novamente | Captura sem fixtures artificiais |
 | Catálogo vazio | Mensagem de estado vazio | Base sem seed |
-| Compra duas lojas | Duas parcelas e totais coerentes | Encomenda demonstrativa anonimizada |
+| Compra duas lojas | Duas parcelas e totais coerentes | Encomenda de teste anonimizada |
 | Pagamento | Rótulo inequívoco, sucesso/falha/expiração | Estado no browser e API |
 | Vendedor/admin | Acesso correcto e moderação | Tentativas permitidas/rejeitadas |
 
-Não confundir estes ensaios técnicos com os cinco testes de utilizadores da monografia. Consentimento académico e recolha de investigação seguem [ACADEMIC_EVALUATION.md](ACADEMIC_EVALUATION.md).
+Executar as tarefas com dados de teste e registar os problemas observados, sem incluir contactos, moradas ou credenciais pessoais nos artefactos.
 
 ## Registo
 

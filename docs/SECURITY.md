@@ -1,6 +1,6 @@
 # Segurança e operação responsável
 
-Controlos do protótipo não constituem certificação ou teste de intrusão externo.
+Os controlos de segurança da aplicação abrangem identidade, autorização e consistência dos dados. A validação interna deve ser complementada por revisão e teste de intrusão externo antes da operação pública.
 
 | Ameaça | Controlo | Verificação |
 | --- | --- | --- |
@@ -24,19 +24,23 @@ A dependência de desenvolvimento `minimatch` usada por `@typescript-eslint/type
 
 O cliente envia CSRF nas mutações conforme a API. Cookies de autenticação são HttpOnly; somente o token CSRF, incapaz de autenticar sozinho, precisa de ser legível. Não guardar tokens de autenticação em localStorage.
 
+Em desenvolvimento, o backend aceita o alias exacto `localhost`/`127.0.0.1` com o mesmo protocolo e porta. Outros endereços exigem autorização explícita em `DEVELOPMENT_FRONTEND_ORIGINS`; esta lista é ignorada em produção e nos testes. O Next.js autoriza hosts de desenvolvimento adicionais através de `DEV_ALLOWED_HOSTS` em `frontend/.env.local`, sem wildcards. A mesma lista de origens backend é aplicada a CORS e CSRF, e um token CSRF válido continua obrigatório.
+
+Formulários de login/registo usam POST explícito e controlos desactivados antes da hidratação. A falha ou desactivação de JavaScript não deve provocar navegação GET com credenciais na query string. A regressão de navegador testa os dois modos com dados fictícios.
+
 ## Administração e segredos
 
-Seed cria apenas contas demonstrativas. Para bootstrap controlado, a partir de `backend/`, fornecer `ADMIN_PASSWORD` por ambiente privado e executar:
+O seed cria apenas contas de teste. Para criar uma conta administrativa própria, a partir de `backend/`, fornecer `ADMIN_PASSWORD` por ambiente privado e executar:
 
 ```powershell
 python -m app.bootstrap_admin --email administrador@dominio-autorizado.example
 ```
 
-O email acima é placeholder. Não colocar passwords na linha de comando, documentação, histórico ou código. Remover a variável da sessão quando terminar. Conferir o comportamento do bootstrap para contas existentes; não promover uma conta real silenciosamente.
+O email acima é um exemplo e deve ser substituído pelo endereço do administrador. Não colocar passwords na linha de comando, documentação, histórico ou código. Remover a variável da sessão quando terminar. O bootstrap recusa promover uma conta existente; escolher uma conta administrativa própria e verificar o resultado.
 
 ## Dados e pagamentos
 
-Nunca recolher PIN de carteira móvel ou dados de cartão. Uma referência demonstrativa não é comprovativo bancário. O simulador não movimenta fundos; callbacks reais exigem validação segundo documentação oficial específica.
+Nunca recolher PIN de carteira móvel ou dados de cartão. Uma referência de teste não é comprovativo bancário. O simulador não movimenta fundos; callbacks reais exigem validação segundo documentação oficial específica.
 
 Minimizar contactos/moradas, expor apenas contacto comercial autorizado e fornecer ao vendedor somente a informação necessária à sua subencomenda. Auditoria identifica actor/acção/recurso sem passwords, tokens, chaves ou números financeiros completos. Relatórios também exigem autorização e revisão de dados expostos.
 
@@ -46,6 +50,6 @@ Separar catálogo público de anexos privados. Validar conteúdo real, extensão
 
 ## Produção
 
-Rever dependências, cabeçalhos, TLS, limites de infraestrutura, monitorização e backup/restauro. Termos e privacidade demonstrativos requerem revisão institucional. Rate limiting da aplicação não substitui toda a gestão de abuso. Ver [limitações](LIMITATIONS.md) e [deploy](DEPLOYMENT.md).
+Rever dependências, cabeçalhos, TLS, limites de infraestrutura, monitorização e backup/restauro. Conferir os contactos, prazos de retenção e condições de utilização nos termos e na política de privacidade para a instalação concreta. Rate limiting da aplicação deve ser complementado por monitorização de abuso. Ver [limitações](LIMITATIONS.md) e [deploy](DEPLOYMENT.md).
 
 Referência técnica: [FastAPI — Argon2 e JWT](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/). O domínio acrescenta autorização por recurso e sessões ao exemplo de autenticação.

@@ -2,7 +2,7 @@
 
 ## Política proposta
 
-Definir responsável, frequência, retenção e objectivos de recuperação antes de uma operação real. O protótipo não configura backups remotos nem garante recuperação automática. Dados da investigação, se vierem a existir, têm regras próprias de consentimento e retenção.
+Definir responsável, frequência, retenção e objectivos de recuperação para a instalação. O agendamento de backups remotos e a recuperação automática dependem da infraestrutura utilizada. A retenção de contactos, moradas e encomendas deve seguir a política de privacidade.
 
 Guardar dumps cifrados fora do repositório, com acesso restrito. Incluir revisão Alembic, versão PostgreSQL e SHA da aplicação num registo sem segredos. Não copiar `.env` ou passwords para a pasta pública de artefactos.
 
@@ -33,7 +33,7 @@ docker compose exec db pg_restore -U deloya -d deloya_restore_check --no-owner /
 docker compose exec db psql -U deloya -d deloya_restore_check -c "SELECT version_num FROM alembic_version;"
 ```
 
-Comparar contagens e relações essenciais sem imprimir dados pessoais. Apontar uma instância de verificação da API para a base restaurada e testar leitura/autorização. Um dump criado com sucesso não demonstra que a recuperação funciona; registar separadamente o resultado do ensaio.
+Comparar contagens e relações essenciais sem imprimir dados pessoais. Apontar uma instância de verificação da API para a base restaurada e testar leitura/autorização. Um dump criado com sucesso não confirma que a recuperação funciona; registar separadamente o resultado do ensaio.
 
 ## Ficheiros e incidentes
 

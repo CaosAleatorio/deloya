@@ -60,9 +60,9 @@ def create_order(db: Session, user: User, data: OrderInput) -> Order:
     lookup = {l.id: l for l in listings}
     modes = {l.is_demo for l in listings}
     if len(modes) != 1:
-        raise HTTPException(409, "Separe anúncios demonstrativos e reais em encomendas diferentes")
+        raise HTTPException(409, "Separe anúncios de teste e reais em encomendas diferentes")
     if get_settings().payment_mode == "demo" and not all(l.is_demo for l in listings):
-        raise HTTPException(409, "O pagamento simulado só aceita anúncios demonstrativos")
+        raise HTTPException(409, "O pagamento de teste só aceita anúncios de teste")
     grouped = defaultdict(list)
     for item in cart:
         listing = lookup[item.listing_id]
@@ -84,7 +84,7 @@ def create_order(db: Session, user: User, data: OrderInput) -> Order:
         fees[store_id] = fee
         total += sum((l.price * c.quantity for c, l in rows), Decimal("0.00")) + fee
     if total > Decimal("9999999999.99"):
-        raise HTTPException(422, "O montante excede o limite do protótipo")
+        raise HTTPException(422, "O montante excede o limite permitido por encomenda")
     order = Order(customer_id=user.id, reference=f"DLY-{uuid4().hex[:12].upper()}",
                   idempotency_key=data.idempotency_key, total=total, is_demo=modes.pop(),
                   delivery_method=data.delivery_method, address=data.address, notes=data.notes,
@@ -164,9 +164,9 @@ class PaymentService:
             raise HTTPException(409, "Esta encomenda já não aceita pagamentos")
         config = db.get(PaymentConfig, 1)
         if config and not config.demo_enabled:
-            raise HTTPException(503, "O modo de demonstração foi desactivado pela administração")
+            raise HTTPException(503, "O pagamento de teste foi desactivado pela administração")
         if not order.is_demo:
-            raise HTTPException(409, "Simulação permitida apenas em encomendas demonstrativas")
+            raise HTTPException(409, "O pagamento de teste só é permitido em encomendas de teste")
         pending = db.scalar(select(PaymentAttempt).where(PaymentAttempt.order_id == order.id,
                                                          PaymentAttempt.status == "pending"))
         if pending:
@@ -192,14 +192,14 @@ class PaymentService:
         payment = db.scalar(select(PaymentAttempt).where(PaymentAttempt.id == payment_id).with_for_update()
                             .execution_options(populate_existing=True))
         if payment.provider != "demo" or not payment.is_demo or not order.is_demo:
-            raise HTTPException(403, "Este pagamento não é uma simulação")
+            raise HTTPException(403, "Este pagamento não é um pagamento de teste")
         if payment.status != "pending":
             return payment  # Replayed or out-of-order notifications never change settled state.
         if order.status != "pendente_pagamento":
             raise HTTPException(409, "A encomenda já não aceita confirmação")
         config = db.get(PaymentConfig, 1)
         if config and not config.demo_enabled:
-            raise HTTPException(503, "Demonstração desactivada")
+            raise HTTPException(503, "Pagamento de teste desactivado")
         payment.status = outcome
         if outcome == "success":
             order.status = "paga"

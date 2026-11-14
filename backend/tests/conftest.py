@@ -109,7 +109,7 @@ def sample(db, password):
         db.flush()
         values[f"{key}_product"] = listing
     service = Listing(store_id=values["vendor_store"].id, category_id=category.id, slug="servico", kind="service",
-                      name="Serviço de teste", description="Descrição de serviço demonstrativo", price=Decimal("25.50"),
+                      name="Serviço de teste", description="Descrição de serviço para teste", price=Decimal("25.50"),
                       stock=None, status="published", is_demo=True)
     db.add(service)
     db.commit()

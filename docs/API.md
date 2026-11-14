@@ -21,7 +21,7 @@ Mutações exigem cookie `csrf_token` e cabeçalho `X-CSRF-Token` iguais, além 
 | GET / POST `/me/addresses` | Moradas próprias; criar com `label,address,province,district,phone` |
 | PATCH / DELETE `/me/addresses/{id}` | Actualizar/remover apenas morada própria |
 
-O registo não aceita `role`, `is_demo` ou campos extra. O backend decide o modo demonstrativo. Não existe recuperação por email sem serviço real configurado.
+O registo não aceita `role`, `is_demo` ou campos extra. O backend determina o indicador de conta de teste conforme a configuração. Não existe recuperação por email sem serviço real configurado.
 
 ## Catálogo público
 
@@ -45,10 +45,10 @@ O registo não aceita `role`, `is_demo` ou campos extra. O backend decide o modo
 | DELETE `/cart/{item_id}` | Remove item próprio |
 | GET / POST `/orders` | Histórico próprio / checkout transaccional |
 | GET `/orders/{id}` | Detalhe próprio com subencomendas |
-| GET `/orders/{id}/receipt.pdf` | Documento PDF privado do titular, com snapshots por loja e aviso de demonstração |
+| GET `/orders/{id}/receipt.pdf` | Documento PDF privado do titular, com snapshots por loja e aviso de teste quando aplicável |
 | POST `/orders/{id}/cancel` | Cancela apenas encomenda ainda por pagar |
 | GET / POST `/payments` | Tentativas próprias / inicia tentativa elegível |
-| POST `/payments/{id}/simulate` | `outcome=success|failure|expired`; somente demonstração própria |
+| POST `/payments/{id}/simulate` | `outcome=success|failure|expired`; somente pagamentos de teste próprios |
 | POST `/payment-webhooks/{provider}` | Desactivado: 503, sem alterar recursos |
 | GET / POST `/service-requests` | Solicitações próprias; criar com `listing_id,message,requested_date?` |
 | GET / POST `/support` | Reclamações próprias; `subject,message,order_id?` |
@@ -57,7 +57,7 @@ Checkout aceita `delivery_method=pickup|arranged`, `address`, `notes`, `requeste
 
 Pagamento aceita `order_id,provider,idempotency_key`. `provider=demo` é o único disponível quando o modo permite. `mpesa`/`emola` devolvem indisponibilidade. Repetições seguras preservam o resultado final; o simulador não altera uma tentativa já finalizada para outro resultado.
 
-O PDF individual usa nome/preço dos snapshots, totais e condições de recepção, sem guardar ficheiro no disco. O titular é o único autorizado; outro cliente, vendedor de uma parcela ou administrador que não seja titular recebe 404 nesta rota. Encomenda por pagar gera «Registo da encomenda», nunca comprovativo de pagamento. Documento demonstrativo conserva «PAGAMENTO SIMULADO — SEM TRANSACÇÃO REAL» e «NÃO CONSTITUI PROVA DE DINHEIRO RECEBIDO», mesmo depois de uma simulação de sucesso.
+O PDF individual usa nome/preço dos snapshots, totais e condições de recepção, sem guardar ficheiro no disco. O titular é o único autorizado; outro cliente, vendedor de uma parcela ou administrador que não seja titular recebe 404 nesta rota. Encomenda por pagar gera «Registo da encomenda», nunca comprovativo de pagamento. Documento de teste conserva «PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO» e «NÃO CONSTITUI PROVA DE DINHEIRO RECEBIDO», mesmo depois de uma simulação de sucesso.
 
 ## Vendedor
 
@@ -75,7 +75,7 @@ O PDF individual usa nome/preço dos snapshots, totais e condições de recepç�
 | POST `/vendor/uploads` | Multipart imagem JPEG/PNG/WebP até 3 MB; Blob configurado obrigatório |
 | DELETE `/vendor/uploads/{image_id}` | Remove imagem própria sem referências activas/arquivadas; Blob configurado obrigatório |
 
-Dados da loja: `name,description,province,district,address,phone,nuit?,logo_url?,delivery_fee?`. `delivery_fee=null` significa tarifa não definida, não entrega gratuita. Anúncio: `name,description,category_id,price,stock,sku,image_url,images,service_location,estimated_duration,status`. Edição usa `expected_updated_at` devolvido no anúncio para detectar conflito, especialmente em stock alterado desde a leitura. Vendedor envia `draft`/`pending`; publicação exige moderação. Imagens devem pertencer à própria loja no armazenamento autorizado ou ser ilustrações locais de demonstração. Remover referências de logo, imagem principal e galeria antes de apagar os bytes; anúncios arquivados também contam.
+Dados da loja: `name,description,province,district,address,phone,nuit?,logo_url?,delivery_fee?`. `delivery_fee=null` significa tarifa não definida, não entrega gratuita. Anúncio: `name,description,category_id,price,stock,sku,image_url,images,service_location,estimated_duration,status`. Edição usa `expected_updated_at` devolvido no anúncio para detectar conflito, especialmente em stock alterado desde a leitura. Vendedor envia `draft`/`pending`; publicação exige moderação. Imagens devem pertencer à própria loja no armazenamento autorizado ou ser imagens ilustrativas locais de teste. Remover referências de logo, imagem principal e galeria antes de apagar os bytes; anúncios arquivados também contam.
 
 ## Administração
 
@@ -87,7 +87,7 @@ Dados da loja: `name,description,province,district,address,phone,nuit?,logo_url?
 | GET / POST `/admin/categories` | Listar/criar categorias e subcategorias |
 | PATCH / DELETE `/admin/categories/{id}` | Editar/desactivar, sem ciclos de hierarquia |
 | GET `/admin/orders` e `/admin/payments` | Filtros `status,is_demo` e paginação |
-| GET / PATCH `/admin/payment-config` | Consultar e activar/desactivar demonstração quando o ambiente permite |
+| GET / PATCH `/admin/payment-config` | Consultar e activar/desactivar pagamentos de teste quando o ambiente permite |
 | GET `/admin/audit` | Registos críticos paginados |
 | GET / PATCH `/admin/support` / `/{id}` | Consulta e resolução de reclamações |
 

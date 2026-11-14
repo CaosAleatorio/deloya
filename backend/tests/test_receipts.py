@@ -32,9 +32,9 @@ def test_receipt_uses_snapshots_and_keeps_store_groups(db, client, sample, passw
     assert first["items"][0]["name"] == original_name
     assert first["items"][0]["unit_price"] == "100.25"
     assert document["total"] == "200.50"
-    assert document["title"] == "Registo da encomenda"
+    assert document["title"] == "REGISTO DE TESTE"
     assert "não tem pagamento confirmado" in document["payment_note"]
-    assert document["demo_notice"] == "PAGAMENTO SIMULADO — SEM TRANSACÇÃO REAL"
+    assert document["demo_notice"] == "PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO"
     assert document["warning"] == "NÃO CONSTITUI PROVA DE DINHEIRO RECEBIDO"
     assert build_order_receipt(order).startswith(b"%PDF-")
 
@@ -69,7 +69,7 @@ def test_successful_simulation_document_still_disclaims_real_money(db, client, s
     confirmed = client.post(f"/api/v1/payments/{started.json()['id']}/simulate", json={"outcome": "success"})
     assert confirmed.status_code == 200
     document = receipt_content(db.get(Order, UUID(order_data["id"])))
-    assert document["title"] == "Comprovativo da encomenda (simulação)"
-    assert document["demo_notice"] == "PAGAMENTO SIMULADO — SEM TRANSACÇÃO REAL"
+    assert document["title"] == "REGISTO DE TESTE"
+    assert document["demo_notice"] == "PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO"
     assert document["warning"] == "NÃO CONSTITUI PROVA DE DINHEIRO RECEBIDO"
-    assert "Não houve transacção financeira real" in document["payment_note"]
+    assert "Não houve movimentação de dinheiro" in document["payment_note"]

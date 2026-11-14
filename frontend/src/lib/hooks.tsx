@@ -1,8 +1,16 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore } from 'react';
 import { api } from './api';
 import type { User } from '../types';
+
+const subscribeToHydration = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
+// Keep sensitive forms disabled in server HTML until their handlers are attached.
+export function useHydrated() {
+  return useSyncExternalStore(subscribeToHydration, clientSnapshot, serverSnapshot);
+}
 
 export function useQuery<T>(path: string | null) {
   const [data, setData] = useState<T | null>(null);

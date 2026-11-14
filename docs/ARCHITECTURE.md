@@ -7,7 +7,7 @@ flowchart LR
     API --> Auth[Autorização e sessões]
     API --> Domain[Serviços de negócio]
     Domain --> DB[(PostgreSQL)]
-    Domain --> Demo[Pagamento de demonstração]
+    Domain --> TestPayment[Pagamento de teste]
     Domain -. desactivado .-> Wallets[M-Pesa / e-Mola]
     API -. configuração autorizada .-> Blob[Vercel Blob]
     Alembic[Migração explícita] -->|ligação directa| DB
@@ -17,7 +17,7 @@ O frontend apresenta catálogo/formulários e consome API real. FastAPI valida p
 
 ## Organização
 
-`frontend/app` mantém o App Router do esqueleto existente; `frontend/src` separa componentes, tipos, cliente HTTP e funcionalidades. Esta adaptação evita recriar a estrutura inicial. `backend/app` separa configuração, dados, modelos, schemas, serviços, integrações e routers. `backend/index.py` reutiliza a instância ASGI. Migração e seed são comandos explícitos.
+`frontend/app` contém as rotas do App Router; `frontend/src` separa componentes, tipos, cliente HTTP e funcionalidades. `backend/app` separa configuração, dados, modelos, schemas, serviços, integrações e routers. `backend/index.py` reutiliza a instância ASGI. Migração e seed são comandos explícitos.
 
 Os componentes shadcn/ui são código local configurado em `frontend/components.json`. O Button usa Radix Slot e variantes CVA adaptadas ao desenho da Deloya; diálogos usam Radix e o estilo global usa Tailwind 4 e CSS. A composição segue a [documentação oficial do Button](https://ui.shadcn.com/docs/components/radix/button), permitindo manter a identidade visual nos componentes locais.
 
@@ -34,12 +34,12 @@ Compose expõe frontend 3000, API 8000 e PostgreSQL 5433 no host. O destino prep
 | Encomenda e subencomendas | Cliente consulta agregado; vendedor recebe apenas a parcela da sua loja. |
 | Snapshots nos itens | Nome e preço da compra não mudam quando o anúncio é editado. |
 | Logística na encomenda/subencomenda | Morada, método e tarifa ficam ligados ao pedido; sem transportadoras fictícias. |
-| `PaymentAttempt` como registo financeiro do MVP | Conserva montante, referência, provedor, estado e idempotência; não liquida fundos reais. |
+| `PaymentAttempt` como registo de tentativa | Conserva montante, referência, provedor, estado e idempotência; não liquida fundos reais. |
 | Decimal e `NUMERIC(12,2)` | Precisão monetária fixa no servidor; JSON transmite strings. |
 | Arquivo e estados | Preservam relações e histórico em vez de reset destrutivo. |
 | UTC no armazenamento | Interface converte para Africa/Maputo e dd/mm/aaaa. |
 
-As entidades sugeridas no enunciado foram consolidadas quando pertencem ao mesmo agregado: produtos/serviços em anúncios, imagens em referências JSON, candidaturas em lojas e pagamentos em tentativas. Não se afirma existência de tabelas separadas que o código não contém. Ver [DATABASE.md](DATABASE.md).
+As entidades pertencentes ao mesmo agregado são consolidadas: produtos/serviços em anúncios, imagens em referências JSON, candidaturas em lojas e pagamentos em tentativas. Ver [DATABASE.md](DATABASE.md).
 
 ## Consistência
 
@@ -53,4 +53,4 @@ JWT de acesso curto e sessão de refresh persistida; refresh é rotativo e conse
 
 ## Evolução
 
-Provedores reais, email de recuperação e armazenamento de anexos dependem de configuração e contratos externos. Não existem workers permanentes, desembolsos automáticos ou estatísticas de investigação produzidas pelo seed. Preparação arquitectural não equivale a validação para produção.
+Provedores reais, email de recuperação e armazenamento de anexos dependem de configuração e contratos externos. Não existem workers permanentes ou desembolsos automáticos. Os dados do seed destinam-se a testes; a operação com serviços externos exige verificação na instalação concreta.

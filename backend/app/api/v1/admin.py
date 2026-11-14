@@ -178,7 +178,7 @@ def payment_config(db: Session = Depends(get_db)):
 @router.patch("/payment-config")
 def update_payment_config(data: PaymentConfigInput, user=Depends(admin_user), db: Session = Depends(get_db)):
     if data.demo_enabled and get_settings().payment_mode != "demo":
-        raise HTTPException(409, "PAYMENT_MODE não permite demonstrações neste ambiente")
+        raise HTTPException(409, "O modo de pagamento configurado não permite pagamentos de teste neste ambiente")
     config = db.get(PaymentConfig, 1)
     if not config:
         config = PaymentConfig(id=1)

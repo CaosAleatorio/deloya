@@ -17,14 +17,14 @@ class PaymentProvider(ABC):
 class DemoPaymentProvider(PaymentProvider):
     def ensure_available(self):
         if get_settings().payment_mode != "demo":
-            raise HTTPException(503, "O modo de demonstração não está activo")
+            raise HTTPException(503, "O modo de pagamento de teste não está activo")
 
 
 class MPesaProvider(PaymentProvider):
     def ensure_available(self):
-        raise HTTPException(503, "M-Pesa real desactivado: requer acesso autorizado e validação da documentação oficial")
+        raise HTTPException(503, "O pagamento real por M-Pesa ainda não está disponível")
 
 
 class EMolaProvider(PaymentProvider):
     def ensure_available(self):
-        raise HTTPException(503, "e-Mola real desactivado: requer documentação comercial e credenciais autorizadas")
+        raise HTTPException(503, "O pagamento real por e-Mola ainda não está disponível")

@@ -6,9 +6,13 @@ import ts from 'typescript';
 // Run the actual browser API adapter without a DOM runner or a live server.
 const source = await readFile(new URL('../src/lib/api.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
-const { api, ApiError, money, date, requestedDate } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
+const { api, ApiError, createIdempotencyKey, money, date, requestedDate } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
 const originalFetch = globalThis.fetch;
+const originalCrypto = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+
+function setCrypto(value) { Object.defineProperty(globalThis, 'crypto', { configurable: true, value }); }
 test.after(() => { globalThis.fetch = originalFetch; delete globalThis.document; });
+test.afterEach(() => { if (originalCrypto) Object.defineProperty(globalThis, 'crypto', originalCrypto); else delete globalThis.crypto; });
 test.beforeEach(() => { globalThis.document = { cookie: 'csrf_token=test-csrf-token' }; });
 
 test('formats decimal API amounts and consultation prices in meticais', () => {
@@ -18,9 +22,45 @@ test('formats decimal API amounts and consultation prices in meticais', () => {
 });
 
 test('presents UTC timestamps in Maputo and sends intended service dates with a timezone', () => {
-  assert.equal(date('2027-08-03T22:30:00Z'), '04/08/2027');
-  assert.equal(requestedDate('2027-08-04'), '2027-08-04T00:00:00+02:00');
+  assert.equal(date('2026-08-03T22:30:00Z'), '04/08/2026');
+  assert.equal(requestedDate('2026-08-04'), '2026-08-04T00:00:00+02:00');
   assert.equal(requestedDate(null), null);
+});
+
+test('creates idempotency keys with the native cryptographic UUID method when available', () => {
+  const expected = 'e102788e-42d6-45c5-b9f0-990b29f060a7';
+  const provider = {
+    randomUUID() { assert.equal(this, provider); return expected; },
+    getRandomValues() { assert.fail('Native UUID support must not use the fallback'); },
+  };
+  setCrypto(provider);
+  assert.equal(createIdempotencyKey(), expected);
+});
+
+test('HTTP LAN fallback uses secure random bytes and preserves all 122 UUIDv4 random bits', () => {
+  const keys = [];
+  for (const fill of [0x00, 0xff, 0x73]) {
+    const entropy = new Uint8Array(16).fill(fill);
+    let secureCalls = 0;
+    setCrypto({ getRandomValues(bytes) { assert.ok(bytes instanceof Uint8Array); assert.equal(bytes.length, 16); bytes.set(entropy); secureCalls++; return bytes; } });
+    const key = createIdempotencyKey();
+    assert.match(key, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    assert.equal(secureCalls, 1);
+    const encoded = Buffer.from(key.replaceAll('-', ''), 'hex');
+    for (let index = 0; index < 16; index++) {
+      const randomMask = index === 6 ? 0x0f : index === 8 ? 0x3f : 0xff;
+      assert.equal(encoded[index] & randomMask, entropy[index] & randomMask, `Random bits preserved in byte ${index}`);
+    }
+    keys.push(key);
+  }
+  assert.equal(new Set(keys).size, keys.length);
+});
+
+test('idempotency key generation fails clearly when no secure random source is available', () => {
+  for (const provider of [undefined, {}]) {
+    setCrypto(provider);
+    assert.throws(() => createIdempotencyKey(), /recursos de segurança necessários/);
+  }
 });
 
 test('sends authenticated reads without caching personal data', async () => {

@@ -54,7 +54,7 @@ def report_rows(db, user, start, end, status, store_id, is_demo, category_id=Non
         raise HTTPException(422, "Reduza o intervalo do relatório para até 5000 subencomendas")
     return [[v.order.reference, str(v.id), v.store.name,
              v.order.created_at.astimezone(MAPUTO).strftime("%d/%m/%Y"),
-             v.status, money(v.total), "SIMULADO — SEM TRANSACÇÃO REAL" if v.order.is_demo else "REAL"] for v in orders]
+             v.status, money(v.total), "TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO" if v.order.is_demo else "REAL"] for v in orders]
 
 
 def safe_csv(value):
@@ -88,7 +88,7 @@ def orders_pdf(start: date | None = None, end: date | None = None, status: str |
     styles["BodyText"].fontSize = 8
     styles["BodyText"].leading = 11
     elements = [Paragraph("Deloya Marketplace — relatório de encomendas", styles["Title"]),
-                Paragraph("Protótipo académico. As linhas SIMULADO não comprovam recebimento de dinheiro. "
+                Paragraph("Os registos identificados como TESTE não constituem prova de dinheiro recebido. "
                           "A moeda é MZN; a data é apresentada no fuso Africa/Maputo.", styles["BodyText"]), Spacer(1, 14)]
     table_rows = [["Encomenda", "Loja", "Data", "Estado", "Total MZN", "Modo"]]
     for row in rows:

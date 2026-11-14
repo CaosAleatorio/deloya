@@ -1,7 +1,7 @@
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, OperationalError
 
@@ -12,7 +12,7 @@ from app.database.session import engine
 
 settings = get_settings()
 app = FastAPI(title="Deloya Marketplace API", version="0.1.0", dependencies=[Depends(verify_csrf)])
-app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin], allow_credentials=True,
+app.add_middleware(CORSMiddleware, allow_origins=settings.allowed_frontend_origins, allow_credentials=True,
                    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
                    allow_headers=["Content-Type", "X-CSRF-Token"])
 
@@ -42,6 +42,11 @@ async def validation_error(request, exc):
     # Never echo input values (which may contain passwords) in validation errors.
     return JSONResponse(status_code=422, content={"detail": "Verifique os campos indicados",
         "errors": [{"field": ".".join(str(p) for p in e["loc"]), "message": e["msg"], "type": e["type"]} for e in exc.errors()]})
+
+
+@app.get("/", include_in_schema=False)
+def api_home():
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health")

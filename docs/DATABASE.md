@@ -6,7 +6,7 @@ PostgreSQL é obrigatório; SQLite não substitui testes de bloqueio. SQLAlchemy
 
 | Tabela | Finalidade e relações |
 | --- | --- |
-| `users` | Email único, contactos, hash Argon2, papel e demonstração |
+| `users` | Email único, contactos, hash Argon2, papel e indicador de conta de teste |
 | `customer_addresses` | Moradas por utilizador e localização |
 | `auth_sessions` | Sessão, família de refresh, hash, expiração e revogação |
 | `rate_limit_buckets` | Contadores persistentes para operações limitadas |
@@ -48,13 +48,13 @@ erDiagram
 - Encomenda: `pendente_pagamento`, `paga`, `em_preparacao`, `pronta`, `entregue`, `cancelada`; a API limita as transições.
 - Tentativa: `pending`, `success`, `failure`, `expired`; chave idempotente única por utilizador.
 - Subencomenda única por loja/encomenda; o vendedor não recebe itens de outra loja.
-- Flags demonstrativas acompanham recursos; simulador não pode confirmar dinheiro real.
+- O indicador `is_demo` acompanha recursos de teste; o simulador não pode confirmar dinheiro real.
 
 Índices cobrem titulares, estados e catálogo. Constraints não substituem autorização nem transacções de stock.
 
-## Consolidação do modelo sugerido
+## Organização do modelo
 
-`listings` reúne produtos e serviços; `images` conserva referências em JSON; `stores.status=pending` representa candidatura; carrinho não exige cabeçalho; logística fica em encomendas; tentativas representam pagamentos no MVP. Estas escolhas reduzem duplicação sem misturar regras físicas e de serviço. Avaliações públicas não são apresentadas como existentes sem implementação e verificação de compra.
+`listings` reúne produtos e serviços; `images` conserva referências em JSON; `stores.status=pending` representa candidatura; carrinho não exige cabeçalho; logística fica em encomendas; tentativas representam o ciclo de pagamento. Estas escolhas reduzem duplicação sem misturar regras físicas e de serviço. Avaliações públicas exigem implementação e verificação de compra.
 
 ## Migrações e seed
 

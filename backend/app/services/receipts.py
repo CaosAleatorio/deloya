@@ -22,11 +22,11 @@ def receipt_content(order):
     """Separate semantic content so payment wording can be tested independently of PDF encoding."""
     settled = order.status in PAID_STATES
     return {
-        "title": "Comprovativo da encomenda (simulação)" if settled and order.is_demo else "Registo da encomenda",
-        "demo_notice": "PAGAMENTO SIMULADO — SEM TRANSACÇÃO REAL" if order.is_demo else None,
+        "title": "REGISTO DE TESTE" if order.is_demo else "Registo da encomenda",
+        "demo_notice": "PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO" if order.is_demo else None,
         "warning": "NÃO CONSTITUI PROVA DE DINHEIRO RECEBIDO",
         "payment_note": (
-            "O estado apresentado refere-se apenas ao cenário de simulação. Não houve transacção financeira real."
+            "O estado apresentado resulta de um pagamento de teste. Não houve movimentação de dinheiro."
             if settled and order.is_demo else
             "Registo informativo do sistema; não substitui factura ou recibo fiscal."
             if settled else
@@ -94,7 +94,7 @@ def build_order_receipt(order):
     def footer(canvas, doc):
         canvas.saveState()
         canvas.setFont("Helvetica", 8)
-        text = "DEMONSTRAÇÃO — SEM TRANSACÇÃO REAL" if order.is_demo else "Registo informativo — sem valor fiscal"
+        text = "REGISTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO" if order.is_demo else "Registo informativo — sem valor fiscal"
         canvas.drawString(doc.leftMargin, 20, text)
         canvas.drawRightString(A4[0] - doc.rightMargin, 20, f"Página {doc.page}")
         canvas.restoreState()

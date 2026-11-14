@@ -1,6 +1,6 @@
 # Preparação de deploy — Vercel, Neon e Blob
 
-**Este documento não significa que a aplicação foi publicada.** O envio de código para o GitHub foi solicitado. Criação de recursos externos, activação financeira e publicação comercial são etapas separadas e não executadas automaticamente.
+Este documento descreve a instalação em alojamento externo. A publicação deve ser confirmada pelo endereço da aplicação, pelo healthcheck e pelos fluxos essenciais. O repositório não inclui credenciais de alojamento ou pagamentos.
 
 ## Arquitectura de destino
 
@@ -30,14 +30,14 @@ Sem credenciais e configuração verificadas, não anunciar upload persistente c
 
 ## Checklist de release
 
-- [ ] Branding provisório e textos institucionais revistos.
+- [ ] Contactos, termos e política de privacidade conferidos para a instalação.
 - [ ] Testes e build executados; resultados registados com data e ambiente.
 - [ ] Base de produção e backup preparados; restauração ensaiada.
 - [ ] Migração revista e aplicada explicitamente à base correcta.
 - [ ] Segredos configurados no servidor; `.env` fora do Git.
 - [ ] Origem HTTPS exacta, CORS restrito, cookies Secure e CSRF verificados.
 - [ ] Conta administrativa criada por procedimento privado, sem palavra-passe partilhada em código.
-- [ ] Dados de demonstração isolados dos reais; pagamentos reais desactivados.
+- [ ] Dados de teste isolados dos dados de operação; pagamentos reais desactivados.
 - [ ] Política e custos de Vercel/Neon/Blob conferidos no plano autorizado.
 - [ ] Healthcheck, registo/login, catálogo, carrinho e encomenda verificados no URL final.
 - [ ] Logs e relatórios revistos para evitar exposição de dados pessoais.

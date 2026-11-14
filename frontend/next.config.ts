@@ -1,6 +1,17 @@
 import type { NextConfig } from "next";
 
+const allowedDevOrigins = [...new Set(['127.0.0.1', ...(process.env.DEV_ALLOWED_HOSTS ?? '').split(',').map((host) => host.trim().toLowerCase()).filter(Boolean)])];
+for (const hostname of allowedDevOrigins) {
+  let valid = false;
+  try {
+    const origin = new URL(`http://${hostname}`);
+    valid = !/[\s/*?#@]/.test(hostname) && origin.hostname === hostname && origin.host === hostname;
+  } catch { /* Invalid development hosts must fail closed. */ }
+  if (!valid) throw new Error('DEV_ALLOWED_HOSTS must contain explicit hostnames separated by commas, without a scheme, port, path or wildcard.');
+}
+
 const nextConfig: NextConfig = {
+  allowedDevOrigins,
   turbopack: {
     root: process.cwd(),
   },

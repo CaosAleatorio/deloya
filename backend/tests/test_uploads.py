@@ -70,7 +70,7 @@ def test_upload_ownership_reference_cleanup_and_delete(client, sample, password,
     assert client.delete(f"/api/v1/vendor/uploads/{own.id}").status_code == 404
 
 
-def test_receipt_is_private_and_marked_demonstrative(client, sample, password):
+def test_receipt_is_private_and_marked_as_test(client, sample, password):
     login(client, sample["customer"], password)
     client.post("/api/v1/cart", json={"listing_id": str(sample["vendor_product"].id), "quantity": 1})
     order = client.post("/api/v1/orders", json={"delivery_method": "pickup", "idempotency_key": uuid4().hex}).json()

@@ -59,7 +59,7 @@ def order_data(order):
 
 def payment_data(payment):
     return dict(entity(payment, "reference", "provider", "status", "is_demo", "order_id"),
-                amount=money(payment.amount), demo_notice="PAGAMENTO SIMULADO — SEM TRANSACÇÃO REAL" if payment.is_demo else None)
+                amount=money(payment.amount), demo_notice="PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO" if payment.is_demo else None)
 
 
 def paginate(db, query, serializer, page=1, page_size=20):

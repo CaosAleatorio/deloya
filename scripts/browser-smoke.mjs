@@ -52,7 +52,7 @@ try {
   const password = `QA-${randomBytes(16).toString('hex')}!`;
   const email = `qa-${Date.now()}@demo.deloya.example.com`;
   await open('/registo');
-  await page.getByLabel('Nome completo', { exact: true }).fill('Utilizador QA de demonstração');
+  await page.getByLabel('Nome completo', { exact: true }).fill('Utilizador QA de teste');
   await page.getByLabel('Email', { exact: true }).fill(email);
   await page.getByLabel('Palavra-passe', { exact: false }).fill(password);
   await page.getByRole('checkbox').check();
@@ -73,10 +73,10 @@ try {
   await page.getByRole('heading', { name: 'Como pretende receber?', exact: true }).waitFor();
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: 'Confirmar encomenda', exact: true }).click();
-  await page.getByRole('button', { name: 'Iniciar pagamento simulado' }).waitFor();
-  assert.ok((await page.getByText('PAGAMENTO SIMULADO — SEM TRANSACÇÃO REAL', { exact: true }).count()) > 0);
-  await page.getByRole('button', { name: 'Iniciar pagamento simulado' }).click();
-  await page.getByRole('button', { name: 'Simular sucesso', exact: true }).click();
+  await page.getByRole('button', { name: 'Iniciar pagamento de teste' }).waitFor();
+  assert.ok((await page.getByText('PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO', { exact: true }).count()) > 0);
+  await page.getByRole('button', { name: 'Iniciar pagamento de teste' }).click();
+  await page.getByRole('button', { name: 'Testar sucesso', exact: true }).click();
   await page.getByText('Paga', { exact: true }).waitFor();
   passed('Two-store cart completes a visibly simulated checkout');
 

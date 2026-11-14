@@ -109,7 +109,7 @@ def verify_csrf(request: Request):
     if request.method in {"GET", "HEAD", "OPTIONS"} or request.url.path.startswith("/api/v1/payment-webhooks/"):
         return
     origin = request.headers.get("origin")
-    if origin and origin.rstrip("/") != get_settings().frontend_origin.rstrip("/"):
+    if origin and origin.rstrip("/") not in get_settings().allowed_frontend_origins:
         raise HTTPException(403, "Origem não autorizada")
     cookie = request.cookies.get("csrf_token", "")
     header = request.headers.get("x-csrf-token", "")

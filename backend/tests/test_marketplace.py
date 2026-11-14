@@ -151,7 +151,7 @@ def test_demo_success_replays_real_providers_fail_closed(client, sample, passwor
                            "idempotency_key": uuid4().hex}).status_code == 503
         assert client.post(f"/api/v1/payment-webhooks/{provider}", json={"status": "success"}).status_code == 503
     attempt, result = payment(client, order, "success")
-    assert result["demo_notice"] == "PAGAMENTO SIMULADO — SEM TRANSACÇÃO REAL"
+    assert result["demo_notice"] == "PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO"
     assert result["amount"] == "100.25"
     assert client.get(f"/api/v1/orders/{order['id']}").json()["status"] == "paga"
     assert client.post(f"/api/v1/payments/{attempt['id']}/simulate", json={"outcome": "failure"}).json()["status"] == "success"
