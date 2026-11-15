@@ -80,6 +80,10 @@ class Store(Entity, Base):
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=True)
     delivery_fee: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    mpesa_phone: Mapped[str | None] = mapped_column(String(13))
+    mpesa_account_name: Mapped[str | None] = mapped_column(String(160))
+    emola_phone: Mapped[str | None] = mapped_column(String(13))
+    emola_account_name: Mapped[str | None] = mapped_column(String(160))
     __table_args__ = (CheckConstraint("status IN ('pending','approved','suspended')", name="ck_store_status"),
                      CheckConstraint("delivery_fee IS NULL OR delivery_fee >= 0", name="ck_store_delivery_fee"))
 
@@ -130,6 +134,7 @@ class Order(Entity, Base):
     status: Mapped[str] = mapped_column(String(30), default="pendente_pagamento", index=True)
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     is_demo: Mapped[bool] = mapped_column(Boolean)
+    payment_mode: Mapped[str] = mapped_column(String(20), default="demo", server_default="demo")
     stock_released: Mapped[bool] = mapped_column(Boolean, default=False)
     delivery_method: Mapped[str] = mapped_column(String(20))
     address: Mapped[str | None] = mapped_column(String(500))
@@ -138,7 +143,7 @@ class Order(Entity, Base):
     vendor_orders: Mapped[list["VendorOrder"]] = relationship(back_populates="order", order_by="VendorOrder.created_at")
     __table_args__ = (UniqueConstraint("customer_id", "idempotency_key", name="uq_order_idempotency"),
                      CheckConstraint("total >= 0", name="ck_order_total"),
-                     CheckConstraint("status IN ('pendente_pagamento','paga','em_preparacao','pronta','entregue','cancelada')", name="ck_order_status"))
+                     CheckConstraint("status IN ('pendente_pagamento','parcialmente_paga','paga','em_preparacao','pronta','entregue','cancelada')", name="ck_order_status"))
 
 
 class VendorOrder(Entity, Base):
@@ -149,9 +154,11 @@ class VendorOrder(Entity, Base):
     delivery_fee: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
     status: Mapped[str] = mapped_column(String(30), default="pendente_pagamento")
     service_status: Mapped[str | None] = mapped_column(String(30))
+    payment_destinations: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}")
     order: Mapped[Order] = relationship(back_populates="vendor_orders")
     store: Mapped[Store] = relationship()
     items: Mapped[list["OrderItem"]] = relationship(order_by="OrderItem.created_at")
+    payments: Mapped[list["PaymentAttempt"]] = relationship(order_by="PaymentAttempt.created_at")
     __table_args__ = (UniqueConstraint("order_id", "store_id", name="uq_order_store"),)
 
 
@@ -170,12 +177,22 @@ class PaymentAttempt(Entity, Base):
     __tablename__ = "payment_attempts"
     order_id: Mapped[UUID] = mapped_column(ForeignKey("orders.id"), index=True)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    vendor_order_id: Mapped[UUID | None] = mapped_column(ForeignKey("vendor_orders.id"), index=True)
     reference: Mapped[str] = mapped_column(String(60), unique=True)
     idempotency_key: Mapped[str] = mapped_column(String(120))
     provider: Mapped[str] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     is_demo: Mapped[bool] = mapped_column(Boolean)
+    transfer_reference: Mapped[str | None] = mapped_column(String(120))
+    destination_phone: Mapped[str | None] = mapped_column(String(13))
+    destination_account_name: Mapped[str | None] = mapped_column(String(160))
+    notes: Mapped[str | None] = mapped_column(String(1000))
+    review_notes: Mapped[str | None] = mapped_column(String(1000))
+    reviewed_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    order: Mapped[Order] = relationship()
+    vendor_order: Mapped[VendorOrder | None] = relationship(overlaps="payments")
     __table_args__ = (UniqueConstraint("user_id", "idempotency_key", name="uq_payment_idempotency"),
                      CheckConstraint("status IN ('pending','success','failure','expired')", name="ck_payment_status"))
 
@@ -205,6 +222,21 @@ class SupportTicket(Entity, Base):
     response: Mapped[str | None] = mapped_column(Text)
 
 
+class PrivateAttachment(Entity, Base):
+    __tablename__ = "private_attachments"
+    ticket_id: Mapped[UUID] = mapped_column(ForeignKey("support_tickets.id"), index=True)
+    uploaded_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    pathname: Mapped[str] = mapped_column(String(500), unique=True)
+    filename: Mapped[str] = mapped_column(String(180))
+    content_type: Mapped[str] = mapped_column(String(100))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    __table_args__ = (
+        CheckConstraint("size_bytes > 0 AND size_bytes <= 3145728", name="ck_private_attachment_size"),
+        CheckConstraint("content_type IN ('image/jpeg','image/png','image/webp','application/pdf')",
+                        name="ck_private_attachment_type"),
+    )
+
+
 class ServiceRequest(Entity, Base):
     __tablename__ = "service_requests"
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
@@ -224,3 +256,8 @@ class UploadedImage(Entity, Base):
 
 
 Index("ix_listing_catalog", Listing.status, Listing.kind, Listing.created_at)
+Index("uq_manual_payment_active", PaymentAttempt.vendor_order_id, unique=True,
+      postgresql_where=(PaymentAttempt.vendor_order_id.is_not(None) & PaymentAttempt.status.in_(["pending", "success"])))
+Index("uq_manual_transfer_reference", PaymentAttempt.provider, PaymentAttempt.destination_phone,
+      PaymentAttempt.transfer_reference, unique=True,
+      postgresql_where=(PaymentAttempt.vendor_order_id.is_not(None) & PaymentAttempt.status.in_(["pending", "success"])))

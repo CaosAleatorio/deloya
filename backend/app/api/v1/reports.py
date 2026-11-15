@@ -89,6 +89,7 @@ def orders_pdf(start: date | None = None, end: date | None = None, status: str |
     styles["BodyText"].leading = 11
     elements = [Paragraph("Deloya Marketplace — relatório de encomendas", styles["Title"]),
                 Paragraph("Os registos identificados como TESTE não constituem prova de dinheiro recebido. "
+                          "Os pagamentos directos são confirmados manualmente pelos vendedores, sem autenticação do operador. "
                           "A moeda é MZN; a data é apresentada no fuso Africa/Maputo.", styles["BodyText"]), Spacer(1, 14)]
     table_rows = [["Encomenda", "Loja", "Data", "Estado", "Total MZN", "Modo"]]
     for row in rows:

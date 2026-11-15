@@ -15,19 +15,20 @@ Para aceder por outro endereço da rede, seguir a configuração de origens no R
 3. Adicionar produtos ou serviços com preço definido ao carrinho. Ajustar quantidades e rever o total calculado pela API.
 4. Seleccionar levantamento ou entrega combinada. Entrega exige morada e tarifa definida por cada loja; uma tarifa ausente não significa entrega gratuita.
 5. Confirmar a encomenda. Compras a várias lojas geram uma encomenda principal e uma parcela por vendedor.
-6. Consultar o histórico e o detalhe da encomenda para acompanhar os estados. O PDF individual fica disponível apenas ao titular e conserva nomes e preços da compra.
-7. Para um serviço «sob consulta», enviar uma solicitação ao vendedor. A data pretendida depende de confirmação; não representa reserva automática de agenda.
+6. No detalhe da encomenda, conferir o número, nome do titular e valor por loja. Transferir na carteira M-Pesa/e-Mola e informar a referência na Deloya. Aguardar a conferência do vendedor; informar uma referência não confirma pagamento.
+7. Consultar o histórico para acompanhar os estados. O PDF individual fica disponível apenas ao titular e conserva nomes e preços da compra.
+8. Para um serviço «sob consulta», enviar uma solicitação ao vendedor. A data pretendida depende de confirmação; não representa reserva automática de agenda.
 
-Encomendas ainda por pagar podem ser canceladas conforme o estado permitido. Para esclarecer um problema, abrir uma reclamação associada à própria encomenda.
+Compras a várias lojas exigem transferências separadas. Encomendas elegíveis podem ser canceladas antes de existir referência pendente ou recebimento confirmado. Para esclarecer um problema, abrir uma reclamação associada à própria encomenda; pode anexar imagens/PDF privados até 3 MiB, quando o armazenamento estiver configurado.
 
 ## Vendedor
 
-1. Iniciar sessão e apresentar a candidatura da loja com os contactos e dados comerciais solicitados.
+1. Iniciar sessão e apresentar a candidatura da loja com os contactos e dados comerciais. Para receber por M-Pesa, indicar número Vodacom e nome do titular; para e-Mola, número Movitel e nome do titular. Usar o nome exacto apresentado pela carteira. Estes campos também podem ser alterados na edição da loja.
 2. Aguardar a aprovação do administrador. Uma candidatura pendente não publica anúncios.
 3. Aceder a `/vendedor/dashboard` para consultar os indicadores da própria loja.
 4. Criar produtos com preço, SKU e stock; criar serviços com preço definido ou sob consulta. Submeter anúncios à moderação antes da publicação.
 5. Actualizar stock e condições da loja. Se outra operação alterar o anúncio durante uma edição, actualizar a página e rever os dados antes de tentar novamente.
-6. Processar as parcelas de encomendas e as solicitações de serviço da própria loja, seguindo as transições disponíveis.
+6. Nas encomendas, conferir cada referência na própria carteira. Confirmar apenas depois de verificar valor e recebimento; rejeitar com motivo se não encontrar a transferência. Depois processar a parcela paga e as solicitações de serviço, seguindo as transições disponíveis.
 
 O carregamento de imagens exige armazenamento configurado. Sem essa configuração, a aplicação apresenta a indisponibilidade. Cada vendedor gere apenas as suas imagens, anúncios e encomendas.
 
@@ -39,9 +40,11 @@ Os relatórios CSV/PDF aceitam filtros de período, loja, categoria e estado con
 
 Para criar a primeira conta administrativa, seguir o procedimento privado em [SECURITY.md](SECURITY.md). As contas opcionais do seed destinam-se a testes.
 
-## Pagamentos de teste
+## Pagamentos e dados de teste
 
-**PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO.** M-Pesa e e-Mola reais estão desactivados. O simulador admite sucesso, falha e expiração apenas em encomendas de teste elegíveis. Um estado «pago» nesse contexto confirma o cenário de teste, sem cobrança ou transferência.
+O modo habitual é transferência directa para o vendedor, com confirmação manual. Não é necessário integrar as APIs M-Pesa/e-Mola. Nunca fornecer PIN. Verificar sempre o nome apresentado na carteira antes de transferir.
+
+**PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO.** Não transferir dinheiro para lojas ou encomendas marcadas como teste. O simulador legado admite sucesso, falha e expiração apenas em dados de teste elegíveis. Um estado «pago» nesse contexto confirma o cenário de teste, sem cobrança ou transferência.
 
 O PDF e os relatórios identificam os registos de teste e não constituem prova de dinheiro recebido. Não fornecer PIN ou dados bancários. Consultar [PAYMENTS.md](PAYMENTS.md) para o estado das integrações.
 

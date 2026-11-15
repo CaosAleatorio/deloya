@@ -6,6 +6,22 @@ Data: **14/11/2026**, referência Africa/Maputo. Este registo descreve verifica�
 
 Windows; Python 3.13.9; Node.js 22.19; Next.js 16.4.6; React 19.3.1; PostgreSQL 17 em Docker. Testes backend executados numa base PostgreSQL isolada. Segredos locais não integram este documento.
 
+## Actualização de 15/11/2026 — transferências directas e anexos privados
+
+| Verificação actual | Resultado observado |
+| --- | --- |
+| Backend completo, runner na base dedicada `deloya_test` | **159 passaram**, 35,23 s |
+| Frontend unitário | **32 passaram** |
+| ESLint / TypeScript / build Next.js | Passaram |
+| Browser de pagamentos manuais, compilação de produção local | Desktop 1440 px e telemóvel 390 px: destinatários separados, valor do servidor, pendência, confirmação, pagamento parcial, rejeição/reenvio, loja suspensa e aviso de teste passaram |
+| Browser de anexos privados, compilação de produção local | Cliente/admin em 1440/390 px: upload, download, remoção, tamanho excedido, indisponibilidade e autorização passaram |
+| Axe nos dois roteiros novos | 6 scans, zero violações reportadas; sem erros JavaScript ou overflow nos cenários verificados |
+| Migração local / `alembic check` / `pip check` | Head `c381dafe204b`; sem diferenças de esquema nem conflitos de dependências |
+| Neon novo, PostgreSQL 17, Frankfurt | Head `c381dafe204b`, 19 tabelas; sem copiar contas ou seed local |
+| Store Blob privado Frankfurt | Marcador sem dados pessoais carregado/lido autenticado; acesso anónimo devolveu 403; marcador removido |
+
+As chamadas API dos dois roteiros novos de browser são simuladas; testes de domínio usam PostgreSQL real. A prova Blob acima usa o armazenamento real, mas a validação das rotas da aplicação publicada fica registada separadamente em [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md). Os resultados abaixo preservam o histórico de 14/11/2026.
+
 ## Verificações executadas
 
 | Verificação | Resultado observado |

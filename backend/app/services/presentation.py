@@ -29,6 +29,12 @@ def store_data(store):
     return result
 
 
+def private_store_data(store):
+    """Wallet configuration is restricted to the owner and administration."""
+    return dict(store_data(store), **{name: getattr(store, name) for name in (
+        "mpesa_phone", "mpesa_account_name", "emola_phone", "emola_account_name")})
+
+
 def category_data(category):
     return entity(category, "name", "slug", "parent_id", "active")
 
@@ -46,6 +52,8 @@ def vendor_order_data(order):
                   items=[dict(entity(i, "listing_id", "name", "kind", "quantity"),
                               unit_price=money(i.unit_price), total=money(i.total)) for i in order.items])
     result.update(reference=order.order.reference, is_demo=order.order.is_demo,
+                  payment_mode=order.order.payment_mode, payment_destinations=order.payment_destinations,
+                  payments=[payment_data(payment) for payment in order.payments],
                   delivery_method=order.order.delivery_method, address=order.order.address,
                   notes=order.order.notes, requested_date=order.order.requested_date)
     return result
@@ -54,11 +62,20 @@ def vendor_order_data(order):
 def order_data(order):
     result = entity(order, "reference", "status", "is_demo", "delivery_method", "address", "notes", "requested_date")
     result.update(total=money(order.total), vendor_orders=[vendor_order_data(v) for v in order.vendor_orders])
+    result.update(payment_mode=order.payment_mode,
+                  can_cancel=order.status == "pendente_pagamento" and not any(
+                      p.status in {"pending", "success"} for v in order.vendor_orders for p in v.payments))
     return result
 
 
 def payment_data(payment):
-    return dict(entity(payment, "reference", "provider", "status", "is_demo", "order_id"),
+    return dict(entity(payment, "reference", "provider", "status", "is_demo", "order_id", "vendor_order_id",
+                       "transfer_reference", "notes", "review_notes", "reviewed_by", "reviewed_at"),
+                payment_mode="manual" if payment.vendor_order_id else "demo",
+                order_reference=payment.order.reference,
+                store_id=payment.vendor_order.store_id if payment.vendor_order else None,
+                destination={"phone": payment.destination_phone, "account_name": payment.destination_account_name}
+                    if payment.vendor_order_id else None,
                 amount=money(payment.amount), demo_notice="PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO" if payment.is_demo else None)
 
 

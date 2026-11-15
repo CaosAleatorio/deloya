@@ -28,6 +28,8 @@ Se `deloya_test` já existir, não repetir `createdb`. Para PostgreSQL nativo, c
 
 Os testes de segurança/negócio abrangem registo, login/logout, JWT inválido/expirado, refresh replay, CSRF, loja pendente, IDOR cliente/vendedor, total no servidor, carrinho multivendedor, stock concorrente, cancelamento e pagamentos repetidos/falhados conforme os ficheiros da suite. Concorrência precisa de transacções PostgreSQL reais; SQLite ou mocks não comprovam bloqueio de stock.
 
+`test_manual_payments.py` cobre destinatários privados, snapshot, total/taxa no servidor, confirmação por loja, pagamento parcial, idempotência, referências repetidas, concorrência e loja suspensa. O runner fixa `PAYMENT_MODE=demo` para regressões legadas; os testes manuais configuram o seu próprio modo sem alterar `.env`. `test_private_attachments.py` verifica titularidade, ficheiros inválidos, quotas e falhas de armazenamento; chamadas Blob são simuladas. `test_blob_sessions.py` exercita o SDK instalado com transporte HTTP controlado. `test_request_limits.py` verifica limites antes do parser, incluindo corpos sem Content-Length.
+
 O teste de relatórios deve incluir encomendas junto da meia-noite de Maputo: 22:00 UTC do dia anterior pertence ao dia local seguinte. Validar também autorização da loja, filtro de categoria sem duplicações e intervalo invertido.
 
 ## Ensaio manual de interface
@@ -46,6 +48,15 @@ node scripts/auth-form-regression.mjs
 ```
 
 O teste funcional cria uma conta e uma encomenda **de teste**, percorre as áreas de cliente, vendedor e administrador, e verifica a navegação móvel. Recusa produtos sem o indicador interno `is_demo`. Usa `DEMO_PASSWORD` apenas do `.env` privado, sem a imprimir. `--panels-only` permite rever as páginas de gestão sem repetir a compra. Capturas e relatórios ficam em `.local/browser-results/`, fora do Git. `QA_BASE_URL` permite mudar a origem de testes explicitamente.
+
+`browser-smoke.mjs` é o roteiro legado do simulador e requer `PAYMENT_MODE=demo` num ambiente de teste próprio. O fluxo manual e os anexos têm regressões adicionais, executadas na raiz com o frontend disponível e as ferramentas Playwright acima instaladas:
+
+```powershell
+node frontend/tests/manual-payments.browser.mjs
+node frontend/tests/support-attachments.browser.mjs
+```
+
+Estas duas regressões interceptam as respostas API no browser: não criam transferências, encomendas ou ficheiros remotos. Exercitam desktop/telemóvel, estados parciais, referências por loja, confirmação/recusa e anexos privados. A suite backend complementa a UI com transacções PostgreSQL reais. Nenhuma destas verificações locais confirma armazenamento ou publicação online.
 
 A análise axe verifica quatro páginas em larguras de 1440 e 390 px. Um resultado sem violações automáticas deve ser complementado por avaliação manual de acessibilidade.
 

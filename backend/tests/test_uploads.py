@@ -17,7 +17,7 @@ def image_bytes():
 
 def enable_blob(monkeypatch):
     settings = get_settings()
-    monkeypatch.setattr(settings, "blob_read_write_token", "test-token-never-sent")
+    monkeypatch.setattr(settings, "blob_read_write_token", "vercel_blob_rw_publictest_test-token-never-sent")
     monkeypatch.setattr(settings, "blob_public_base_url", "https://example.public.blob.vercel-storage.com")
     monkeypatch.setenv("BLOB_READ_WRITE_TOKEN", "test-token-never-sent")
 

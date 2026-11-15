@@ -6,7 +6,7 @@ import ts from 'typescript';
 // Run the actual browser API adapter without a DOM runner or a live server.
 const source = await readFile(new URL('../src/lib/api.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
-const { api, ApiError, createIdempotencyKey, money, date, requestedDate } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
+const { api, apiBlob, ApiError, createIdempotencyKey, money, date, requestedDate } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
 const originalFetch = globalThis.fetch;
 const originalCrypto = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
 
@@ -128,4 +128,42 @@ test('handles non-JSON service errors and empty successful responses', async () 
   await assert.rejects(() => api('/products'), (error) => error instanceof ApiError && error.status === 502);
   globalThis.fetch = async () => new Response(null, { status: 204 });
   assert.equal(await api('/cart/item', { method: 'DELETE' }), undefined);
+});
+
+test('uploads attachments as multipart without overriding the browser boundary and sends CSRF', async () => {
+  const body = new FormData();
+  body.set('file', new Blob(['%PDF-test'], { type: 'application/pdf' }), 'recibo.pdf');
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, '/api/v1/support/ticket-id/attachments');
+    assert.equal(options.body, body);
+    assert.equal(options.headers.has('Content-Type'), false);
+    assert.equal(options.headers.get('X-CSRF-Token'), 'test-csrf-token');
+    assert.equal(options.credentials, 'include');
+    assert.equal(options.cache, 'no-store');
+    return Response.json({ id: 'attachment-id' }, { status: 201 });
+  };
+  assert.deepEqual(await api('/support/ticket-id/attachments', { method: 'POST', body }), { id: 'attachment-id' });
+});
+
+test('downloads private bytes through the authenticated proxy after refreshing an expired session', async () => {
+  const calls = [];
+  let reads = 0;
+  globalThis.fetch = async (url, options) => {
+    calls.push(url);
+    assert.equal(options.credentials, 'include');
+    assert.equal(options.cache, 'no-store');
+    if (url.endsWith('/refresh')) return Response.json({});
+    return ++reads === 1 ? Response.json({ detail: 'expired' }, { status: 401 }) : new Response('%PDF-private', { headers: { 'Content-Type': 'application/pdf' } });
+  };
+  const blob = await apiBlob('/attachments/attachment-id');
+  assert.equal(await blob.text(), '%PDF-private');
+  assert.equal(blob.type, 'application/pdf');
+  assert.deepEqual(calls, ['/api/v1/attachments/attachment-id', '/api/v1/auth/refresh', '/api/v1/attachments/attachment-id']);
+});
+
+test('private download errors preserve permission and unavailable-storage messages', async () => {
+  for (const [status, detail] of [[403, 'Acesso restrito.'], [503, 'Armazenamento privado indisponível.']]) {
+    globalThis.fetch = async () => Response.json({ detail }, { status });
+    await assert.rejects(() => apiBlob('/attachments/attachment-id'), (error) => error instanceof ApiError && error.status === status && error.message === detail);
+  }
 });

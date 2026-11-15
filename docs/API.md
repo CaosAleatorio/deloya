@@ -48,14 +48,20 @@ O registo não aceita `role`, `is_demo` ou campos extra. O backend determina o i
 | GET `/orders/{id}/receipt.pdf` | Documento PDF privado do titular, com snapshots por loja e aviso de teste quando aplicável |
 | POST `/orders/{id}/cancel` | Cancela apenas encomenda ainda por pagar |
 | GET / POST `/payments` | Tentativas próprias / inicia tentativa elegível |
+| GET `/payment-settings` | Modo actual (`manual`, `demo`, `disabled`) e disponibilidade do simulador; sem credenciais |
+| POST `/orders/{id}/vendor-orders/{vendor_order_id}/payments` | Declara transferência própria: `provider=mpesa|emola,reference,idempotency_key,notes?` |
 | POST `/payments/{id}/simulate` | `outcome=success|failure|expired`; somente pagamentos de teste próprios |
 | POST `/payment-webhooks/{provider}` | Desactivado: 503, sem alterar recursos |
 | GET / POST `/service-requests` | Solicitações próprias; criar com `listing_id,message,requested_date?` |
 | GET / POST `/support` | Reclamações próprias; `subject,message,order_id?` |
+| GET / POST `/support/{ticket_id}/attachments` | Lista metadados / multipart `file`, até 3 MiB; titular/admin |
+| GET / DELETE `/attachments/{id}` | Download autenticado / remoção; titular/admin |
 
 Checkout aceita `delivery_method=pickup|arranged`, `address`, `notes`, `requested_date` e `idempotency_key` (8–120 caracteres). Não aceita preço/total do browser. Entrega combinada exige morada e tarifa explícita de cada loja; serviço sob consulta exige solicitação em vez de compra arbitrária.
 
-Pagamento aceita `order_id,provider,idempotency_key`. `provider=demo` é o único disponível quando o modo permite. `mpesa`/`emola` devolvem indisponibilidade. Repetições seguras preservam o resultado final; o simulador não altera uma tentativa já finalizada para outro resultado.
+No modo `manual`, declarar uma transferência usa a rota da subencomenda: o servidor obtém montante e destinatário do snapshot, cria estado `pending` e aguarda revisão pelo vendedor. Encomendas devolvem `payment_mode`, `can_cancel` e, por loja, `payment_destinations` e `payments`. `parcialmente_paga` identifica parcelas já confirmadas enquanto outras aguardam. Informar referência não confirma dinheiro recebido. A chave de idempotência preserva o resultado; reutilizá-la com dados diferentes devolve 409.
+
+A rota legada `POST /payments` aceita `order_id,provider=demo,idempotency_key` apenas no modo de teste elegível. Os adaptadores automáticos `mpesa`/`emola` permanecem indisponíveis; a rota manual não os invoca. O simulador não altera uma tentativa já finalizada para outro resultado.
 
 O PDF individual usa nome/preço dos snapshots, totais e condições de recepção, sem guardar ficheiro no disco. O titular é o único autorizado; outro cliente, vendedor de uma parcela ou administrador que não seja titular recebe 404 nesta rota. Encomenda por pagar gera «Registo da encomenda», nunca comprovativo de pagamento. Documento de teste conserva «PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO» e «NÃO CONSTITUI PROVA DE DINHEIRO RECEBIDO», mesmo depois de uma simulação de sucesso.
 
@@ -70,12 +76,14 @@ O PDF individual usa nome/preço dos snapshots, totais e condições de recepç�
 | PATCH / DELETE `/vendor/products/{id}` e `/vendor/services/{id}` | Actualizar/arquivar anúncio próprio |
 | GET `/vendor/orders` | Subencomendas próprias, filtro `status` |
 | PATCH `/vendor/orders/{id}` | `status` e/ou `service_status` conforme transição |
+| GET `/vendor/payments` | Declarações das próprias subencomendas; filtro `status` e paginação |
+| POST `/vendor/orders/{id}/payments/{payment_id}/review` | `decision=confirm|reject,wallet_verified,notes?`; confirmar exige conferência explícita, rejeitar exige motivo |
 | GET `/vendor/service-requests` | Solicitações da loja |
 | PATCH `/vendor/service-requests/{id}` | `confirmed`, `declined` ou `completed` conforme estado |
 | POST `/vendor/uploads` | Multipart imagem JPEG/PNG/WebP até 3 MB; Blob configurado obrigatório |
 | DELETE `/vendor/uploads/{image_id}` | Remove imagem própria sem referências activas/arquivadas; Blob configurado obrigatório |
 
-Dados da loja: `name,description,province,district,address,phone,nuit?,logo_url?,delivery_fee?`. `delivery_fee=null` significa tarifa não definida, não entrega gratuita. Anúncio: `name,description,category_id,price,stock,sku,image_url,images,service_location,estimated_duration,status`. Edição usa `expected_updated_at` devolvido no anúncio para detectar conflito, especialmente em stock alterado desde a leitura. Vendedor envia `draft`/`pending`; publicação exige moderação. Imagens devem pertencer à própria loja no armazenamento autorizado ou ser imagens ilustrativas locais de teste. Remover referências de logo, imagem principal e galeria antes de apagar os bytes; anúncios arquivados também contam.
+Dados da loja: `name,description,province,district,address,phone,nuit?,logo_url?,delivery_fee?`, mais pares opcionais `mpesa_phone,mpesa_account_name` e `emola_phone,emola_account_name`. Cada carteira exige número e nome juntos; nove dígitos locais normalizam para `+258`. Respostas públicas de loja/anúncio excluem estes quatro campos. `delivery_fee=null` significa tarifa não definida, não entrega gratuita. Anúncio: `name,description,category_id,price,stock,sku,image_url,images,service_location,estimated_duration,status`. Edição usa `expected_updated_at` devolvido no anúncio para detectar conflito, especialmente em stock alterado desde a leitura. Vendedor envia `draft`/`pending`; publicação exige moderação. Imagens devem pertencer à própria loja no armazenamento autorizado ou ser imagens ilustrativas locais de teste. Remover referências de logo, imagem principal e galeria antes de apagar os bytes; anúncios arquivados também contam.
 
 ## Administração
 

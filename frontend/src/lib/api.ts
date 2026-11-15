@@ -24,7 +24,7 @@ async function renewSession() {
   return refreshInFlight;
 }
 
-export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function apiResponse(path: string, options: RequestInit = {}): Promise<Response> {
   const method = (options.method ?? 'GET').toUpperCase();
   const headers = new Headers(options.headers);
   if (options.body && !(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
@@ -46,12 +46,20 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     } catch { /* Preserve a readable error for unavailable API servers. */ }
     throw new ApiError(message, response.status);
   }
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+  return response;
+}
+
+export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const response = await apiResponse(path, options);
+  return response.status === 204 ? undefined as T : response.json() as Promise<T>;
+}
+
+export async function apiBlob(path: string): Promise<Blob> {
+  return (await apiResponse(path)).blob();
 }
 
 export const json = (value: unknown) => JSON.stringify(value);
 export const money = (value: string | number | null | undefined) => value == null ? 'Sob consulta' : `${new Intl.NumberFormat('pt-MZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value))} MT`;
 export const date = (value: string) => new Intl.DateTimeFormat('pt-MZ', { timeZone: 'Africa/Maputo' }).format(new Date(value));
 export const requestedDate = (value: FormDataEntryValue | null) => value ? `${value}T00:00:00+02:00` : null;
-export const statusLabel = (value: string) => ({ pending: 'Pendente', approved: 'Aprovada', suspended: 'Suspensa', active: 'Activo', draft: 'Rascunho', published: 'Publicado', pending_payment: 'Aguarda pagamento', paid: 'Paga', preparing: 'Em preparação', ready: 'Pronta', delivered: 'Entregue', cancelled: 'Cancelada', failed: 'Falhou', expired: 'Expirado', success: 'Concluído', completed: 'Concluída', requested: 'Solicitado', confirmed: 'Confirmado', declined: 'Recusado', pending_approval: 'Aguarda aprovação', pendente_pagamento: 'Aguarda pagamento', paga: 'Paga', em_preparacao: 'Em preparação', pronta: 'Pronta', entregue: 'Entregue', cancelada: 'Cancelada' }[value] ?? value.replaceAll('_', ' '));
+export const statusLabel = (value: string) => ({ pending: 'Pendente', approved: 'Aprovada', suspended: 'Suspensa', active: 'Activo', draft: 'Rascunho', published: 'Publicado', pending_payment: 'Aguarda pagamento', paid: 'Paga', preparing: 'Em preparação', ready: 'Pronta', delivered: 'Entregue', cancelled: 'Cancelada', failed: 'Falhou', expired: 'Expirado', success: 'Concluído', completed: 'Concluída', requested: 'Solicitado', confirmed: 'Confirmado', declined: 'Recusado', pending_approval: 'Aguarda aprovação', parcialmente_paga: 'Parcialmente paga', pendente_pagamento: 'Aguarda pagamento', paga: 'Paga', em_preparacao: 'Em preparação', pronta: 'Pronta', entregue: 'Entregue', cancelada: 'Cancelada' }[value] ?? value.replaceAll('_', ' '));

@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 from fastapi import HTTPException
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models import (AuditLog, CartItem, Listing, Order, OrderItem, PaymentAttempt,
@@ -34,6 +34,27 @@ def available(listing: Listing):
         raise HTTPException(409, "Serviço sob consulta: envie uma solicitação ao vendedor")
 
 
+def wallet_destinations(store: Store):
+    """Seller-declared destinations, never an operator or identity verification."""
+    return {provider: {"phone": getattr(store, f"{provider}_phone"),
+                       "account_name": getattr(store, f"{provider}_account_name")}
+            for provider in ("mpesa", "emola") if getattr(store, f"{provider}_phone")
+            and getattr(store, f"{provider}_account_name")}
+
+
+def aggregate_order_status(db: Session, order: Order):
+    db.flush()
+    states = db.scalars(select(VendorOrder.status).where(VendorOrder.order_id == order.id)).all()
+    rank = ["paga", "em_preparacao", "pronta", "entregue"]
+    paid = [state for state in states if state in rank]
+    if len(paid) == len(states) and states:
+        order.status = min(paid, key=rank.index)
+    elif paid:
+        order.status = "parcialmente_paga"
+    else:
+        order.status = "pendente_pagamento"
+
+
 def cart_data(db: Session, user: User):
     items = db.scalars(select(CartItem).where(CartItem.user_id == user.id).order_by(CartItem.created_at)).all()
     total = Decimal("0.00")
@@ -57,12 +78,17 @@ def create_order(db: Session, user: User, data: OrderInput) -> Order:
         raise HTTPException(400, "O carrinho está vazio")
     listings = db.scalars(select(Listing).where(Listing.id.in_([c.listing_id for c in cart]))
                           .order_by(Listing.id).with_for_update()).all()
+    # Snapshot a coherent, locked seller configuration; later edits cannot redirect this order.
+    stores = {s.id: s for s in db.scalars(select(Store).where(Store.id.in_({l.store_id for l in listings}))
+              .order_by(Store.id).with_for_update().execution_options(populate_existing=True)).all()}
     lookup = {l.id: l for l in listings}
     modes = {l.is_demo for l in listings}
     if len(modes) != 1:
         raise HTTPException(409, "Separe anúncios de teste e reais em encomendas diferentes")
     if get_settings().payment_mode == "demo" and not all(l.is_demo for l in listings):
         raise HTTPException(409, "O pagamento de teste só aceita anúncios de teste")
+    if get_settings().payment_mode == "manual" and user.is_demo and not all(l.is_demo for l in listings):
+        raise HTTPException(409, "Uma conta de teste só pode encomendar anúncios de teste; crie uma conta real")
     grouped = defaultdict(list)
     for item in cart:
         listing = lookup[item.listing_id]
@@ -75,7 +101,9 @@ def create_order(db: Session, user: User, data: OrderInput) -> Order:
     total = Decimal("0.00")
     fees = {}
     for store_id, rows in grouped.items():
-        store = rows[0][1].store
+        store = stores[store_id]
+        if get_settings().payment_mode == "manual" and not wallet_destinations(store):
+            raise HTTPException(409, f"A loja {store.name} ainda não configurou M-Pesa ou e-Mola")
         fee = Decimal("0.00")
         if data.delivery_method == "arranged":
             if store.delivery_fee is None:
@@ -87,6 +115,7 @@ def create_order(db: Session, user: User, data: OrderInput) -> Order:
         raise HTTPException(422, "O montante excede o limite permitido por encomenda")
     order = Order(customer_id=user.id, reference=f"DLY-{uuid4().hex[:12].upper()}",
                   idempotency_key=data.idempotency_key, total=total, is_demo=modes.pop(),
+                  payment_mode=get_settings().payment_mode,
                   delivery_method=data.delivery_method, address=data.address, notes=data.notes,
                   requested_date=data.requested_date)
     db.add(order)
@@ -95,6 +124,7 @@ def create_order(db: Session, user: User, data: OrderInput) -> Order:
         vendor = VendorOrder(order_id=order.id, store_id=store_id,
                              total=sum((l.price * c.quantity for c, l in rows), Decimal("0.00")) + fees[store_id],
                              delivery_fee=fees[store_id],
+                             payment_destinations=wallet_destinations(stores[store_id]) if order.payment_mode == "manual" else {},
                              service_status="solicitada" if any(l.kind == "service" for _, l in rows) else None)
         db.add(vendor)
         db.flush()
@@ -133,6 +163,9 @@ def cancel_order(db: Session, user: User, order_id: UUID):
         return order
     if order.status != "pendente_pagamento":
         raise HTTPException(409, "Só pode cancelar uma encomenda por pagar; contacte o apoio para outros estados")
+    if db.scalar(select(PaymentAttempt.id).where(PaymentAttempt.order_id == order.id,
+            PaymentAttempt.vendor_order_id.is_not(None), PaymentAttempt.status.in_(["pending", "success"]))):
+        raise HTTPException(409, "Existe uma transferência comunicada; aguarde a verificação do vendedor ou contacte o apoio")
     release_stock(db, order)
     order.status = "cancelada"
     for vendor in order.vendor_orders:
@@ -154,6 +187,8 @@ class PaymentService:
         order = db.scalar(select(Order).where(Order.id == data.order_id, Order.customer_id == user.id).with_for_update())
         if not order:
             raise HTTPException(404, "Encomenda não encontrada")
+        if order.payment_mode != "demo":
+            raise HTTPException(409, "Esta encomenda não usa pagamento de teste")
         existing = db.scalar(select(PaymentAttempt).where(PaymentAttempt.user_id == user.id,
                                                           PaymentAttempt.idempotency_key == data.idempotency_key))
         if existing:

@@ -1,42 +1,48 @@
-# Pagamentos e conciliação
+# Pagamentos directos aos vendedores
 
-## Modos
+M-Pesa e e-Mola funcionam por transferência feita pelo cliente na sua carteira, fora da Deloya. A plataforma apresenta os dados declarados pelo vendedor, regista a referência e aguarda confirmação do recebimento pelo próprio vendedor. Não chama APIs das operadoras, não cobra dinheiro nem solicita PIN.
 
-| Modo | Comportamento | Condições |
-| --- | --- | --- |
-| Teste | Simula sucesso, falha e expiração; persiste tentativa e estado | Dados de teste elegíveis e rótulo obrigatório |
-| Sandbox oficial | Não activado | Documentação técnica aprovada, credenciais e testes do provedor |
-| Produção real | Não activada | Contrato comercial, credenciais, segurança, reconciliação e autorização |
+## Configurar a loja
 
-O rótulo obrigatório é **PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO**. «Pago» num registo de teste significa apenas que a simulação teve sucesso. Relatórios e documentos de teste não provam recebimento de dinheiro. Nunca informar ou recolher PIN da carteira móvel.
+Na candidatura de vendedor ou na edição da loja, preencher os pares que a loja aceita:
 
-## Provedores e fontes oficiais
+| Carteira | Campos |
+| --- | --- |
+| M-Pesa / Vodacom | Número e nome do titular tal como aparece na carteira |
+| e-Mola / Movitel | Número e nome do titular tal como aparece na carteira |
 
-A Vodacom apresenta uma API Aberta M-Pesa com C2B para recebimentos e métodos síncronos/assíncronos. O portal oficial menciona ambiente de testes. Isto confirma a existência da oferta, mas não concede à Deloya credenciais ou autorização. O adaptador real permanece desactivado até serem verificados os contratos técnicos e comerciais da conta autorizada. Fontes consultadas em 14/11/2026: [API Aberta M-Pesa](https://www.vm.co.mz/m-pesa/artigo/api-aberta-do-m-pesa) e [portal de desenvolvimento](https://developer.mpesa.vm.co.mz/).
+Cada método exige os dois campos preenchidos. Números moçambicanos são normalizados para `+258` seguido de nove dígitos. Esta validação verifica formato; não consulta a operadora nem certifica titularidade. O vendedor deve conferir os dados antes de os guardar. Os campos financeiros não aparecem no catálogo público; o comprador autenticado recebe os destinatários da própria encomenda.
 
-Para e-Mola, a consulta ao [site oficial da Movitel](https://www.movitel.co.mz/) não disponibilizou uma especificação técnica pública utilizável nesta implementação. Não se conclui que uma API não exista. Solicitar documentação e acesso comercial à Movitel ou a um integrador autorizado e verificar a sua autorização antes de implementar chamadas. Não se adoptam URLs ou assinaturas de terceiros como contrato oficial.
+Os dados ficam copiados na subencomenda no checkout. Alterar a carteira da loja afecta compras futuras e preserva o destinatário apresentado nas encomendas já criadas.
 
-## Desenho do serviço
+## Comprar e confirmar
 
-`PaymentService` coordena regras de domínio; `DemoPaymentProvider`, `MPesaProvider` e `EMolaProvider` implementam uma interface de provedor. Os dois últimos falham de forma explícita enquanto não houver integração autorizada. O servidor calcula o montante a partir da encomenda; o browser não determina o total.
+1. O servidor calcula artigos, entrega e total de cada loja. O browser não envia o valor a cobrar.
+2. No detalhe da encomenda, o cliente escolhe M-Pesa ou e-Mola entre os métodos configurados e confere número, titular e valor.
+3. O cliente faz a transferência na carteira, verifica o nome apresentado pela operadora e guarda a referência.
+4. Na Deloya, informa referência e uma nota opcional. Isto cria uma declaração **pendente de confirmação**; não torna a encomenda paga.
+5. O vendedor consulta o saldo/extracto da sua carteira, confere referência e valor, e confirma o recebimento na sua área. Pode rejeitar com motivo quando não encontrar o pagamento.
 
-Cada tentativa guarda identidade própria, encomenda, referência interna única, provedor, montante Decimal, estado, chave de idempotência e timestamps. O isolamento impede um cliente de iniciar ou consultar pagamentos de encomendas de outro cliente. Operações que mudam o estado são transaccionais. Repetir a mesma chave devolve o resultado associado, sem criar outra tentativa ou aplicar a mesma transição duas vezes.
+Uma compra de duas lojas exige duas transferências e duas confirmações independentes. O estado da encomenda pode ficar `parcialmente_paga` até todas as parcelas serem confirmadas. Cada vendedor processa apenas a sua parcela confirmada.
 
-O fluxo de teste só pode actuar em dados identificados pelo indicador interno `is_demo`. Uma encomenda cancelada, falhada ou expirada não pode receber posteriormente uma confirmação simulada que a torne paga. A reposição de stock deve ocorrer no máximo uma vez quando o fluxo a exigir. O valor de provedor `demo` e o nome `DemoPaymentProvider` são identificadores técnicos preservados no contrato da API.
+Rejeitar uma referência não cancela a encomenda nem repõe o stock. O cliente pode corrigir e reenviar. Uma declaração pendente ou recebimento confirmado bloqueia cancelamento global; resolver qualquer divergência com o vendedor e o apoio. A Deloya não executa estornos ou reembolsos automáticos.
 
-## Integração real futura
+## Controlo e histórico
 
-Antes de activar qualquer provedor:
+As rotas validam titularidade da encomenda, propriedade e aprovação da loja, estado e montante no servidor. Operações usam bloqueios transaccionais e chaves de idempotência; repetir um pedido não duplica recebimentos. Uma confirmação final não pode ser convertida em rejeição por um novo clique.
 
-1. Obter a especificação oficial aplicável, identidade do comerciante e condições de liquidação.
-2. Implementar autenticação e validação de callbacks exactamente conforme esse contrato; rejeitar assinaturas inválidas e referências desconhecidas.
-3. Definir timeouts, repetição segura, tratamento de estados indeterminados e reconciliação autorizada.
-4. Testar eventos repetidos, fora de ordem, conflito de montante/moeda, entrega atrasada e falha após débito externo.
-5. Separar credenciais e dados sandbox/produção; rever logs para excluir segredos e números financeiros completos.
-6. Validar termos, privacidade, custos e limites antes de publicar.
+Cada declaração conserva provedor, referência, parcela, valor, estado, datas e responsável pela revisão. Apenas o vendedor da parcela pode confirmar ou rejeitar. A auditoria regista a decisão sem incluir tokens ou PIN. Os relatórios identificam recebimentos confirmados pelo vendedor; não afirmam validação bancária pela Deloya.
 
-Uma página de retorno nunca confirma pagamento. Um webhook não autenticado nunca altera a encomenda. Não existe aqui um mecanismo genérico inventado de assinatura para M-Pesa/e-Mola: a autenticação terá de seguir documentação oficial específica.
+O PDF da encomenda reflecte o estado registado, incluindo parcelas pendentes. Não substitui o comprovativo emitido pela operadora. Reclamações podem receber anexos privados na área de apoio; apenas titular e administradores acedem a esses ficheiros.
 
-## Liquidação e relatórios
+## Modos de operação
 
-O sistema regista valores por vendedor através das subencomendas. Não executa transferências, split settlement, reembolso financeiro ou desembolsos automáticos. A conciliação comercial futura exige procedimento manual autorizado, registo do responsável e comparação com os extractos do provedor. Métricas de teste não devem ser somadas a receitas reais.
+| `PAYMENT_MODE` | Comportamento |
+| --- | --- |
+| `manual` | Transferência directa M-Pesa/e-Mola e revisão pelo vendedor; modo habitual. |
+| `demo` | Simulador legado de sucesso/falha/expiração, apenas em dados de teste elegíveis. |
+| `disabled` | Novos pagamentos indisponíveis. |
+
+Dados de teste preservam o indicador interno `is_demo` e o aviso **PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO**. Nunca enviar dinheiro para esses destinatários. Confirmar um cenário de teste não representa dinheiro recebido e não integra receitas reais. Mudar de modo não converte contas, lojas ou encomendas antigas em dados reais.
+
+Os adaptadores automáticos M-Pesa/e-Mola e o webhook permanecem desactivados. Uma página de retorno ou uma referência declarada pelo cliente nunca confirma recebimento por si só. Uma futura integração automática exigiria documentação e autorização próprias; não é necessária para este fluxo manual.

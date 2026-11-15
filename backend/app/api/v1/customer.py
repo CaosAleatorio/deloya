@@ -6,15 +6,24 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.catalog import Page, PageSize
 from app.core.security import current_user, rate_limit
+from app.core.config import get_settings
 from app.database.session import get_db
-from app.models import CartItem, Listing, Order, PaymentAttempt, ServiceRequest, SupportTicket, User
+from app.models import CartItem, Listing, Order, PaymentAttempt, PaymentConfig, ServiceRequest, SupportTicket, User
 from app.schemas.requests import (CartAdd, OrderInput, PaymentInput, Quantity, ServiceRequestInput,
-                                  Simulation, SupportInput)
+                                  Simulation, SupportInput, ManualPaymentInput)
 from app.services.commerce import (PaymentService, audit, available, cancel_order, cart_data,
                                    create_order)
 from app.services.presentation import entity, order_data, paginate, payment_data
+from app.services.manual_payments import report_transfer
 
 router = APIRouter()
+
+
+@router.get("/payment-settings")
+def payment_settings(db: Session = Depends(get_db)):
+    config = db.get(PaymentConfig, 1)
+    mode = get_settings().payment_mode
+    return {"mode": mode, "demo_enabled": mode == "demo" and (config.demo_enabled if config else True)}
 
 
 @router.get("/cart")
@@ -116,6 +125,13 @@ def payments(page: Page = 1, page_size: PageSize = 20, user=Depends(current_user
 def payment(data: PaymentInput, request: Request, user=Depends(current_user), db: Session = Depends(get_db)):
     rate_limit(db, request, f"payment:{user.id}", 30)
     return payment_data(PaymentService.create(db, user, data))
+
+
+@router.post("/orders/{order_id}/vendor-orders/{vendor_order_id}/payments", status_code=201)
+def manual_payment(order_id: UUID, vendor_order_id: UUID, data: ManualPaymentInput, request: Request,
+                   user=Depends(current_user), db: Session = Depends(get_db)):
+    rate_limit(db, request, f"manual-payment:{user.id}", 30)
+    return payment_data(report_transfer(db, user, order_id, vendor_order_id, data))
 
 
 @router.post("/payments/{payment_id}/simulate")

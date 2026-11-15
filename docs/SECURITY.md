@@ -12,7 +12,7 @@ Os controlos de segurança da aplicação abrangem identidade, autorização e c
 | Preço adulterado | Recalcular na API | Payload manipulado |
 | Venda acima do stock | Transacção e bloqueio de linhas | Concorrência PostgreSQL |
 | Pagamento duplicado | Idempotência e estado transaccional | Repetição/fora de ordem |
-| Confirmação falsa | Provedores reais desactivados; retorno não confirma | Webhook não autorizado |
+| Confirmação falsa | Referência do cliente fica pendente; só dono da loja aprovada confirma após conferência da carteira | IDOR, duplicação e retorno sem autorização |
 | Upload malicioso | Tipo/conteúdo/tamanho/titularidade e acesso público/privado | Validar fluxo configurado |
 | Segredo no browser/Git | `.env` ignorado; sem `NEXT_PUBLIC_*` privado | Revisão dos ficheiros rastreados |
 
@@ -47,6 +47,8 @@ Minimizar contactos/moradas, expor apenas contacto comercial autorizado e fornec
 ## Ficheiros
 
 Separar catálogo público de anexos privados. Validar conteúdo real, extensão e limites; gerar nomes seguros e verificar titularidade ao alterar/remover referências. Bloquear conteúdo activo arbitrário de utilizadores. Sem armazenamento autorizado, não prometer upload persistente. Não servir documentos privados por URLs públicos nem usar filesystem efémero para persistência.
+
+Anexos de apoio usam `BLOB_PRIVATE_READ_WRITE_TOKEN`, separado do token público de catálogo. A API devolve metadados sem URL/caminho de armazenamento; download autenticado com `no-store` e disposição `attachment`. Só o titular do pedido e administradores podem listar, enviar, descarregar e remover; ser vendedor de uma encomenda não concede acesso a estes documentos. Limites: 3 MiB por ficheiro, 10 por pedido e PDF não encriptado até 100 páginas. Imagens são reprocessadas para remover metadados.
 
 ## Produção
 

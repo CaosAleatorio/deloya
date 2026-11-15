@@ -15,7 +15,7 @@ from app.schemas.requests import (CategoryInput, ListingModeration, PaymentConfi
                                   StoreModeration, SupportUpdate)
 from app.services.commerce import audit
 from app.services.presentation import (category_data, entity, listing_data, money, order_data,
-                                       paginate, payment_data, slugify, store_data)
+                                       paginate, payment_data, private_store_data, slugify)
 
 router = APIRouter(prefix="/admin", dependencies=[Depends(admin_user)])
 
@@ -51,7 +51,7 @@ def stores(status: str | None = None, page: Page = 1, page_size: PageSize = 20, 
     query = select(Store)
     if status:
         query = query.where(Store.status == status)
-    return paginate(db, query.order_by(Store.created_at.desc()), store_data, page, page_size)
+    return paginate(db, query.order_by(Store.created_at.desc()), private_store_data, page, page_size)
 
 
 @router.patch("/stores/{store_id}")
@@ -62,7 +62,7 @@ def moderate_store(store_id: UUID, data: StoreModeration, user=Depends(admin_use
     store.status = data.status
     audit(db, user, "store.moderated", store, {"status": data.status, "reason": data.reason})
     db.commit()
-    return store_data(store)
+    return private_store_data(store)
 
 
 @router.get("/catalog")

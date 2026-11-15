@@ -6,7 +6,9 @@ Next.js 16 / React 19 / TypeScript / Tailwind 4; FastAPI / SQLAlchemy / Alembic 
 
 Inclui catálogo, contas de cliente, candidaturas de vendedores, gestão de lojas, carrinho multivendedor, encomendas, administração e relatórios. Consulte o [guia de utilização](docs/USER_GUIDE.md).
 
-**PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO.** M-Pesa e e-Mola reais permanecem desactivados. Os dados opcionais de teste são fictícios. Consulte o [estado das integrações e limites operacionais](docs/LIMITATIONS.md).
+Os pagamentos M-Pesa e e-Mola são transferências directas para a carteira de cada vendedor. O vendedor configura número e nome do titular; o cliente transfere fora da plataforma e informa a referência. O vendedor confere o recebimento antes de confirmar. Não é necessária integração com as APIs das operadoras. Consulte o [fluxo de pagamentos](docs/PAYMENTS.md).
+
+Contas, lojas e encomendas de teste conservam o aviso **PAGAMENTO DE TESTE — SEM MOVIMENTAÇÃO DE DINHEIRO**. Nunca transferir dinheiro para dados de teste. Os [limites operacionais](docs/LIMITATIONS.md) identificam o que depende de serviços externos.
 
 ## Arranque com Docker — Windows / PowerShell
 

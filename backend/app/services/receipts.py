@@ -14,6 +14,7 @@ from app.services.presentation import money
 MAPUTO = ZoneInfo("Africa/Maputo")
 PAID_STATES = {"paga", "em_preparacao", "pronta", "entregue"}
 STATES = {"pendente_pagamento": "Pendente de pagamento", "paga": "Paga",
+          "parcialmente_paga": "Parcialmente paga",
           "em_preparacao": "Em preparação", "pronta": "Pronta",
           "entregue": "Entregue", "cancelada": "Cancelada"}
 
@@ -27,7 +28,10 @@ def receipt_content(order):
         "warning": "NÃO CONSTITUI PROVA DE DINHEIRO RECEBIDO",
         "payment_note": (
             "O estado apresentado resulta de um pagamento de teste. Não houve movimentação de dinheiro."
-            if settled and order.is_demo else
+            if (settled or order.status == "parcialmente_paga") and order.is_demo else
+            "Recebimentos registados por confirmação manual dos vendedores. A plataforma não autenticou "
+            "as transferências junto do operador; este registo não substitui factura ou recibo fiscal."
+            if order.payment_mode == "manual" and (settled or order.status == "parcialmente_paga") else
             "Registo informativo do sistema; não substitui factura ou recibo fiscal."
             if settled else
             "Esta encomenda não tem pagamento confirmado. Este registo não é um comprovativo de pagamento."
@@ -48,6 +52,11 @@ def receipt_content(order):
             "items": [{"name": item.name, "quantity": item.quantity,
                        "unit_price": money(item.unit_price), "total": money(item.total)}
                       for item in vendor.items],
+            "payments": [{"provider": payment.provider, "reference": payment.transfer_reference,
+                          "amount": money(payment.amount),
+                          "reviewed_at": payment.reviewed_at.astimezone(MAPUTO).strftime("%d/%m/%Y %H:%M")
+                              if payment.reviewed_at else None}
+                         for payment in vendor.payments if payment.status == "success" and payment.vendor_order_id],
         } for vendor in order.vendor_orders],
     }
 
@@ -76,6 +85,10 @@ def build_order_receipt(order):
     for store in data["stores"]:
         story.extend([Spacer(1, 14), paragraph(store["name"], "Heading2"),
                       paragraph(f"Estado da subencomenda: {store['status']}")])
+        for payment in store["payments"]:
+            story.append(paragraph(f"Confirmação manual do vendedor: {payment['provider']} — "
+                f"referência {payment['reference']} — {payment['amount']} MZN — {payment['reviewed_at']} (Maputo). "
+                "Não autenticada pelo operador."))
         rows = [["Descrição", "Quantidade", "Preço MT", "Total MT"]]
         for item in store["items"]:
             rows.append([paragraph(item["name"]), str(item["quantity"]), item["unit_price"], item["total"]])

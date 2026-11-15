@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -58,7 +59,39 @@ class StoreInput(StrictModel):
     nuit: str | None = Field(default=None, max_length=30)
     logo_url: str | None = Field(default=None, max_length=1000)
     delivery_fee: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
+    mpesa_phone: str | None = Field(default=None, max_length=30)
+    mpesa_account_name: str | None = Field(default=None, min_length=2, max_length=160)
+    emola_phone: str | None = Field(default=None, max_length=30)
+    emola_account_name: str | None = Field(default=None, min_length=2, max_length=160)
     _logo = field_validator("logo_url")(valid_image_url)
+
+    @field_validator("mpesa_phone", "emola_phone", mode="before")
+    @classmethod
+    def wallet_phone(cls, value):
+        if value is None or not str(value).strip():
+            return None
+        number = re.sub(r"[\s()-]", "", str(value))
+        if re.fullmatch(r"\d{9}", number):
+            number = "+258" + number
+        elif re.fullmatch(r"258\d{9}", number):
+            number = "+" + number
+        if not re.fullmatch(r"\+258\d{9}", number):
+            raise ValueError("Indique um número moçambicano de 9 dígitos, com +258 opcional")
+        return number
+
+    @field_validator("mpesa_account_name", "emola_account_name", mode="before")
+    @classmethod
+    def wallet_name(cls, value):
+        if value is None:
+            return None
+        return str(value).strip() or None
+
+    @model_validator(mode="after")
+    def wallet_pairs(self):
+        for provider in ("mpesa", "emola"):
+            if bool(getattr(self, f"{provider}_phone")) != bool(getattr(self, f"{provider}_account_name")):
+                raise ValueError("Preencha o número e o nome do titular da mesma carteira")
+        return self
 
 
 class ListingInput(StrictModel):
@@ -115,6 +148,32 @@ class PaymentInput(StrictModel):
 
 class Simulation(StrictModel):
     outcome: Literal["success", "failure", "expired"]
+
+
+class ManualPaymentInput(StrictModel):
+    provider: Literal["mpesa", "emola"]
+    reference: str = Field(min_length=3, max_length=120, pattern=r"^[A-Za-z0-9][A-Za-z0-9._/-]{2,119}$")
+    idempotency_key: str = Field(min_length=8, max_length=120)
+    notes: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("reference")
+    @classmethod
+    def normalize_reference(cls, value):
+        return value.upper()
+
+
+class ManualPaymentReview(StrictModel):
+    decision: Literal["confirm", "reject"]
+    wallet_verified: bool = False
+    notes: str | None = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def verified_decision(self):
+        if self.decision == "confirm" and not self.wallet_verified:
+            raise ValueError("Confirme que consultou a carteira e verificou o recebimento")
+        if self.decision == "reject" and (not self.notes or len(self.notes) < 3):
+            raise ValueError("Indique o motivo da rejeição")
+        return self
 
 
 class StoreModeration(StrictModel):

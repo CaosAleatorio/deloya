@@ -14,9 +14,11 @@ from app.core.config import get_settings
 from app.core.security import current_user
 from app.database.session import get_db
 from app.models import Category, Listing, Order, PaymentAttempt, ServiceRequest, Store, UploadedImage, VendorOrder
-from app.schemas.requests import ListingInput, ServiceRequestUpdate, StoreInput, VendorTransition
-from app.services.commerce import approved_store, audit
-from app.services.presentation import listing_data, money, paginate, slugify, store_data, vendor_order_data
+from app.schemas.requests import ListingInput, ManualPaymentReview, ServiceRequestUpdate, StoreInput, VendorTransition
+from app.services.commerce import aggregate_order_status, approved_store, audit
+from app.services.manual_payments import review_transfer
+from app.services.blob_storage import blob_session
+from app.services.presentation import listing_data, money, paginate, payment_data, private_store_data, slugify, vendor_order_data
 
 router = APIRouter(prefix="/vendor")
 
@@ -35,23 +37,25 @@ def application(data: StoreInput, user=Depends(current_user), db: Session = Depe
     db.flush()
     audit(db, user, "store.applied", store)
     db.commit()
-    return store_data(store)
+    return private_store_data(store)
 
 
 @router.get("/store")
 def own_store(user=Depends(current_user), db: Session = Depends(get_db)):
-    return store_data(approved_store(db, user, allow_pending=True))
+    return private_store_data(approved_store(db, user, allow_pending=True))
 
 
 @router.patch("/store")
 def update_store(data: StoreInput, user=Depends(current_user), db: Session = Depends(get_db)):
     store = approved_store(db, user)
+    store = db.scalar(select(Store).where(Store.id == store.id).with_for_update()
+                      .execution_options(populate_existing=True))
     validate_images(db, store, [data.logo_url])
     for name, value in data.model_dump().items():
         setattr(store, name, value)
     audit(db, user, "store.updated", store)
     db.commit()
-    return store_data(store)
+    return private_store_data(store)
 
 
 @router.get("/dashboard")
@@ -61,13 +65,13 @@ def dashboard(user=Depends(current_user), db: Session = Depends(get_db)):
         Listing.store_id == store.id, Listing.kind == kind, Listing.status == "published"))
     paid = lambda demo: db.scalar(select(func.coalesce(func.sum(VendorOrder.total), 0)).join(Order)
         .where(VendorOrder.store_id == store.id, Order.is_demo == demo,
-               Order.status.in_(["paga", "em_preparacao", "pronta", "entregue"])))
+               VendorOrder.status.in_(["paga", "em_preparacao", "pronta", "entregue"])))
     recent = db.scalars(select(VendorOrder).where(VendorOrder.store_id == store.id)
                         .order_by(VendorOrder.created_at.desc()).limit(5)).all()
     low = db.scalars(select(Listing).where(Listing.store_id == store.id, Listing.kind == "product",
                                            Listing.status == "published", Listing.stock <= 5)
                      .order_by(Listing.stock).limit(10)).all()
-    return {"store": store_data(store), "active_products": count("product"), "active_services": count("service"),
+    return {"store": private_store_data(store), "active_products": count("product"), "active_services": count("service"),
             "orders_count": db.scalar(select(func.count()).select_from(VendorOrder).where(VendorOrder.store_id == store.id)),
             "low_stock": [listing_data(l) for l in low], "paid_total": money(paid(False)),
             "simulated_paid_total": money(paid(True)), "recent_orders": [vendor_order_data(v) for v in recent]}
@@ -178,7 +182,7 @@ def transition(vendor_order_id: UUID, data: VendorTransition, user=Depends(curre
     order = db.scalar(select(Order).where(Order.id == initial.order_id).with_for_update())
     vendor = db.scalar(select(VendorOrder).where(VendorOrder.id == vendor_order_id).with_for_update()
                        .execution_options(populate_existing=True))
-    if order.status in {"pendente_pagamento", "cancelada"}:
+    if order.status == "cancelada" or vendor.status in {"pendente_pagamento", "cancelada"}:
         raise HTTPException(409, "A encomenda ainda não está paga ou foi cancelada")
     if data.service_status:
         allowed = {"solicitada": {"confirmada"}, "confirmada": {"concluida"}, "concluida": set()}
@@ -194,13 +198,27 @@ def transition(vendor_order_id: UUID, data: VendorTransition, user=Depends(curre
         if data.status == "entregue" and vendor.service_status and vendor.service_status != "concluida":
             raise HTTPException(409, "Conclua primeiro o serviço")
         vendor.status = data.status
-    rank = ["paga", "em_preparacao", "pronta", "entregue"]
-    db.flush()
-    states = db.scalars(select(VendorOrder.status).where(VendorOrder.order_id == order.id)).all()
-    order.status = min(states, key=rank.index)
+    aggregate_order_status(db, order)
     audit(db, user, "vendor_order.updated", vendor, {"status": vendor.status, "service_status": vendor.service_status})
     db.commit()
     return vendor_order_data(vendor)
+
+
+@router.get("/payments")
+def manual_payments(status: str | None = None, page: Page = 1, page_size: PageSize = 20,
+                    user=Depends(current_user), db: Session = Depends(get_db)):
+    store = approved_store(db, user, allow_pending=True)
+    query = select(PaymentAttempt).join(VendorOrder, PaymentAttempt.vendor_order_id == VendorOrder.id).where(
+        VendorOrder.store_id == store.id)
+    if status:
+        query = query.where(PaymentAttempt.status == status)
+    return paginate(db, query.order_by(PaymentAttempt.created_at.desc()), payment_data, page, page_size)
+
+
+@router.post("/orders/{vendor_order_id}/payments/{payment_id}/review")
+def review_payment(vendor_order_id: UUID, payment_id: UUID, data: ManualPaymentReview,
+                   user=Depends(current_user), db: Session = Depends(get_db)):
+    return payment_data(review_transfer(db, user, vendor_order_id, payment_id, data))
 
 
 @router.get("/service-requests")
@@ -247,11 +265,12 @@ def upload(file: UploadFile = File(...), user=Depends(current_user), db: Session
         image.save(output, format="WEBP", quality=85)
     except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
         raise HTTPException(422, "Conteúdo de imagem inválido")
-    import os
     from vercel.blob.sync import put_blob
     try:
-        os.environ["BLOB_READ_WRITE_TOKEN"] = settings.blob_read_write_token
-        result = put_blob(f"stores/{store.id}/{uuid4().hex}.webp", output.getvalue(), access="public", content_type="image/webp")
+        with blob_session(settings.blob_read_write_token):
+            result = put_blob(f"stores/{store.id}/{uuid4().hex}.webp", output.getvalue(), access="public", content_type="image/webp")
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(502, "O armazenamento de imagens não respondeu; tente novamente")
     url = result.url
@@ -275,11 +294,12 @@ def delete_upload(image_id: UUID, user=Depends(current_user), db: Session = Depe
     settings = get_settings()
     if not settings.blob_read_write_token:
         raise HTTPException(503, "Configure Vercel Blob para remover imagens")
-    import os
     from vercel.blob.sync import delete_blob
     try:
-        os.environ["BLOB_READ_WRITE_TOKEN"] = settings.blob_read_write_token
-        delete_blob(image.url)
+        with blob_session(settings.blob_read_write_token):
+            delete_blob(image.url)
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(502, "Não foi possível remover a imagem do armazenamento")
     db.delete(image)

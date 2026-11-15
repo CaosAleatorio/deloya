@@ -11,18 +11,19 @@ PostgreSQL é obrigatório; SQLite não substitui testes de bloqueio. SQLAlchemy
 | `auth_sessions` | Sessão, família de refresh, hash, expiração e revogação |
 | `rate_limit_buckets` | Contadores persistentes para operações limitadas |
 | `categories` | Slug, hierarquia por categoria pai e estado |
-| `stores` | Titular único, candidatura/estado, contacto, NUIT opcional e tarifa |
+| `stores` | Titular único, candidatura/estado, contacto, NUIT opcional, tarifa e pares privados de número/titular M-Pesa/e-Mola |
 | `listings` | Anúncios produto/serviço, loja/categoria, imagens e moderação |
 | `cart_items` | Anúncio e quantidade por utilizador; par único |
 | `orders` | Cliente, referência, total, logística, estado e idempotência |
-| `vendor_orders` | Parcela única por loja/encomenda, tarifa e processamento |
+| `vendor_orders` | Parcela única por loja/encomenda, tarifa, processamento e snapshot dos destinatários de pagamento |
 | `order_items` | Snapshot de nome, tipo, quantidade e preço |
-| `payment_attempts` | Encomenda, referência, provedor, montante e estado |
+| `payment_attempts` | Encomenda/parcela, referência interna e declarada, provedor, montante, destinatário e revisão pelo vendedor |
 | `payment_config` | Disponibilidade administrativa do simulador |
 | `audit_logs` | Actor, acção, recurso e detalhes sem segredos |
 | `support_tickets` | Reclamação, encomenda opcional e resposta |
 | `service_requests` | Pedido de serviço e data pretendida opcional |
 | `uploaded_images` | Imagem pública carregada, caminho Blob e loja titular |
+| `private_attachments` | Metadados de anexos privados de apoio; bytes em Blob privado, acesso por titular/admin |
 
 ```mermaid
 erDiagram

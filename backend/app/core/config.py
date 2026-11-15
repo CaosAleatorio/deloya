@@ -32,11 +32,12 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:3000"
     development_frontend_origins: list[str] = Field(default_factory=list)
     cookie_secure: bool = False
-    payment_mode: Literal["demo", "disabled"] = "demo"
+    payment_mode: Literal["manual", "demo", "disabled"] = "manual"
     access_token_minutes: int = 15
     refresh_token_days: int = 30
     blob_read_write_token: str | None = None
     blob_public_base_url: str | None = None
+    blob_private_read_write_token: str | None = None
     environment: Literal["development", "test", "production"] = "development"
 
     @property

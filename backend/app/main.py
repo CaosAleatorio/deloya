@@ -5,13 +5,15 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, OperationalError
 
-from app.api.v1 import admin, auth, catalog, customer, reports, vendor
+from app.api.v1 import admin, attachments, auth, catalog, customer, reports, vendor
 from app.core.config import get_settings
+from app.core.request_limits import UploadBodyLimitMiddleware
 from app.core.security import verify_csrf
 from app.database.session import engine
 
 settings = get_settings()
 app = FastAPI(title="Deloya Marketplace API", version="0.1.0", dependencies=[Depends(verify_csrf)])
+app.add_middleware(UploadBodyLimitMiddleware)
 app.add_middleware(CORSMiddleware, allow_origins=settings.allowed_frontend_origins, allow_credentials=True,
                    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
                    allow_headers=["Content-Type", "X-CSRF-Token"])
@@ -59,5 +61,5 @@ def health():
         return JSONResponse(status_code=503, content={"status": "degraded", "database": "unavailable"})
 
 
-for router in (auth.router, catalog.router, customer.router, vendor.router, admin.router, reports.router):
+for router in (auth.router, catalog.router, customer.router, vendor.router, admin.router, reports.router, attachments.router):
     app.include_router(router, prefix="/api/v1")
