@@ -4,6 +4,8 @@ Marketplace multivendedor de produtos e serviços para a **Deloya Serviços e Co
 
 Next.js 16 / React 19 / TypeScript / Tailwind 4; FastAPI / SQLAlchemy / Alembic / Psycopg 3 / PostgreSQL. Os dados operacionais vêm da API e da base de dados.
 
+Publicação: [abrir Deloya](https://deloya.vercel.app), [estado da API](https://deloya-api.vercel.app/health) e [documentação da API](https://deloya-api.vercel.app/docs). Infraestrutura e verificações estão no [registo de publicação](docs/DEPLOYMENT_CHECKLIST.md).
+
 Inclui catálogo, contas de cliente, candidaturas de vendedores, gestão de lojas, carrinho multivendedor, encomendas, administração e relatórios. Consulte o [guia de utilização](docs/USER_GUIDE.md).
 
 Os pagamentos M-Pesa e e-Mola são transferências directas para a carteira de cada vendedor. O vendedor configura número e nome do titular; o cliente transfere fora da plataforma e informa a referência. O vendedor confere o recebimento antes de confirmar. Não é necessária integração com as APIs das operadoras. Consulte o [fluxo de pagamentos](docs/PAYMENTS.md).
@@ -42,7 +44,7 @@ A porta **8000** serve a API; não apresenta um segundo painel de gestão. Abrir
 docker compose run --rm backend python -m app.seed --demo
 ```
 
-Contas de teste: `admin@demo.deloya.example.com`, `cliente@demo.deloya.example.com`, `vendedor1@demo.deloya.example.com` e `vendedor2@demo.deloya.example.com`. A palavra-passe é `DEMO_PASSWORD` no `.env` local. Não existe palavra-passe pública. Consultar apenas no editor; nunca incluir em capturas ou commits.
+Contas de cliente/vendedor de teste: `cliente@demo.deloya.example.com`, `vendedor1@demo.deloya.example.com` e `vendedor2@demo.deloya.example.com`. A palavra-passe é `DEMO_PASSWORD` no `.env` local. Não existe palavra-passe pública. Consultar apenas no editor; nunca incluir em capturas ou commits.
 
 O seed é explícito e idempotente, sem apagar dados ou substituir contas existentes. Numa conta já criada, preserva a palavra-passe; alterar `DEMO_PASSWORD` não redefine essa conta. Não o executar em produção. Para criar uma conta administrativa própria, consultar [segurança](docs/SECURITY.md).
 

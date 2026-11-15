@@ -67,9 +67,9 @@ As actions `checkout`, `setup-node` e `setup-python` usam a versão `v7`, com ru
 
 ## Limites de validação
 
-- Não houve publicação verificada em Vercel nem criação/validação de produção no Neon.
+- A actualização de 15/11/2026 publicou e verificou Vercel/Neon; IDs, URLs e alcance das verificações estão em [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md).
 - Não houve cobrança real por M-Pesa/e-Mola, liquidação a vendedores ou teste com credenciais financeiras de produção.
-- O upload remoto Vercel Blob não foi validado com armazenamento e credenciais reais; testes locais não comprovam operação remota.
+- O SDK validou o Blob privado real com marcador, leitura autenticada, acesso anónimo 403 e remoção. O utilizador dispensou o ensaio adicional pelas rotas da aplicação com contas técnicas de produção; não o apresentar como executado.
 - Não há serviço real de email configurado ou envio de recuperação validado.
 - Dados de teste e pagamentos simulados não comprovam vendas ou dinheiro recebido.
 

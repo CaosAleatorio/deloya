@@ -54,3 +54,6 @@ htmlcov/
 artifacts/
 playwright-report/
 test-results/
+
+.env*
+!.env.example
