@@ -24,6 +24,16 @@ As chamadas API dos dois roteiros novos de browser são simuladas; testes de dom
 
 ## Verificações executadas
 
+### Actualização de 20/11/2026 — categorias e contacto
+
+- Corrigida a expressão do identificador de categoria para o modo `v` do Chromium. O formulário normaliza espaços/acentos, esclarece os campos opcionais e mostra validação e falhas da API junto dos campos.
+- Frontend: **35 testes passaram**, ESLint, TypeScript e build de produção aprovados.
+- Regressão de categorias em 1440/390 px, com API simulada: primeira categoria sem pai/identificador, subcategoria, edição, normalização e repetição após erro passaram; sem erros JavaScript ou overflow.
+- Rodapé verificado em 1440/375/320 px: telefone/WhatsApp `+258871707406`, exemplos de perfis de Adelino identificados e sem links para contas presumidas. Sem overflow ou violações Axe no âmbito do rodapé.
+- Produção: criadas pela API administrativa oito categorias principais e oito subcategorias. Acrescentadas três lojas de exemplo solicitadas, identificadas com `is_demo=true`, sem carteiras de pagamento; as duas lojas reais preexistentes foram preservadas. Registos de criação das lojas ficaram na auditoria. Donos técnicos das lojas ilustrativas têm login desactivado.
+
+Os resultados seguintes preservam o histórico da entrega anterior.
+
 | Verificação | Resultado observado |
 | --- | --- |
 | Backend, `scripts/test-backend.py` / Pytest | **105 passed**, 40,69 segundos, após correcções de acesso e revisão dos textos |

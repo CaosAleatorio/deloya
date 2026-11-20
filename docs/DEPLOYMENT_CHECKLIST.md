@@ -80,6 +80,8 @@ Não registar strings de conexão, passwords ou tokens.
 
 ## Limites desta entrega
 
+**Actualização de 20/11/2026:** a pedido do proprietário, foram adicionadas 16 categorias (oito principais/oito subcategorias) e três lojas ilustrativas: Adelino Tecnologia, Adelino Moda & Acessórios e Adelino Serviços. As lojas MetaB e Guy's Beauty existentes não foram alteradas. As novas lojas estão identificadas como exemplos e não têm carteiras de pagamento configuradas. O rodapé apresenta o contacto fornecido e perfis sociais explicitamente ilustrativos. A correcção do formulário foi validada conforme [VALIDATION.md](VALIDATION.md).
+
 A publicação é persistente nas contas autorizadas, com API/base e proxy verificados. O utilizador dispensou testes adicionais que criariam contas e um pedido de apoio temporários na base Production; esses dados não foram criados. Os fluxos de login, anexos e isolamento entre utilizadores têm testes locais, sem repetição com contas de produção. O Blob real foi testado directamente pelo SDK com marcador sem dados pessoais.
 
 O catálogo está vazio e não recebeu seed. Upload público de imagens exige store público separado. O plano Vercel Hobby está documentado para uso pessoal/não comercial; confirmar plano apropriado antes de operação comercial. Backup/restauro e acompanhamento de quotas continuam como preparação operacional. Não houve transferência financeira real.

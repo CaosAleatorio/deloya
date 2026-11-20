@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, BadgeCheck, Building2, ChevronDown, HeartHandshake, MapPin, Menu, Search, ShieldCheck, ShoppingBag, Store as StoreIcon, UserRound, X } from 'lucide-react';
+import { ArrowRight, BadgeCheck, Building2, ChevronDown, Facebook, HeartHandshake, Instagram, Linkedin, MapPin, Menu, MessageCircle, Phone, Search, ShieldCheck, ShoppingBag, Store as StoreIcon, UserRound, X } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Toaster } from 'sonner';
 import { api } from '../lib/api';
@@ -25,7 +25,40 @@ function Header() {
   return <header className="site-header"><div className="topbar"><div className="container topbar-content"><span><MapPin size={12} /> De Nampula, para mais perto de si.</span><span className="topbar-right">Comércio local <span className="tiny-dot" /> Português · MZN</span></div></div><div className="container header-main"><Brand /><form className="header-search" onSubmit={onSearch} role="search"><Search size={19} /><input aria-label="Pesquisar produtos" name="q" placeholder="O que procura hoje?" defaultValue={search.get('q') ?? ''} /><button aria-label="Pesquisar"><ArrowRight size={20} /></button></form><div className="header-actions"><Link href={user ? '/conta' : '/login'} className="account-link" aria-label={user ? 'Abrir a minha conta' : 'Iniciar sessão ou registar'}><UserRound size={21} /><span><small>{user ? 'Olá,' : 'Bem-vindo'}</small><strong>{user ? user.name.split(' ')[0] : 'Entrar / Registar'}</strong></span></Link><Link href="/carrinho" className="cart-link" aria-label="Abrir carrinho"><ShoppingBag size={22} /><span className="cart-count">{cart.data?.items.reduce((count, item) => count + item.quantity, 0) ?? 0}</span></Link><Dialog.Root><Dialog.Trigger className="icon-button mobile-menu" aria-label="Abrir menu"><Menu size={23} /></Dialog.Trigger><Dialog.Portal><Dialog.Overlay className="modal-overlay" /><Dialog.Content className="mobile-menu-content"><Dialog.Title>Explorar Deloya</Dialog.Title><Dialog.Description>Produtos, serviços e a sua conta.</Dialog.Description><Dialog.Close className="icon-button close-menu" aria-label="Fechar menu"><X /></Dialog.Close>{nav.map((item) => <Dialog.Close key={item.href} asChild><Link href={item.href}>{item.text}<ArrowRight size={17} /></Link></Dialog.Close>)}<Dialog.Close asChild><Link href="/vendedor/candidatura">Abrir uma loja<ArrowRight size={17} /></Link></Dialog.Close><Dialog.Close asChild><Link href={user ? '/conta' : '/login'}>A minha conta<ArrowRight size={17} /></Link></Dialog.Close></Dialog.Content></Dialog.Portal></Dialog.Root></div></div><nav className="container desktop-nav" aria-label="Navegação principal"><Link className="all-categories" href="/produtos"><Menu size={17} />Explorar categorias<ChevronDown size={14} /></Link><div>{nav.map((item) => <Link key={item.href} className={path.startsWith(item.href) ? 'nav-active' : ''} href={item.href}>{item.text}</Link>)}<Link href="/sobre">Sobre a Deloya</Link></div><Link className="sell-link" href={user?.role === 'vendor' ? '/vendedor/dashboard' : user?.role === 'admin' ? '/admin/dashboard' : '/vendedor/candidatura'}><StoreIcon size={16} />{user?.role === 'vendor' ? 'Gerir a minha loja' : user?.role === 'admin' ? 'Administração' : 'Venda na Deloya'}<ArrowRight size={14} /></Link></nav></header>;
 }
 
-function Footer() { return <footer className="site-footer"><div className="container footer-top"><div><Brand /><p>O comércio local, com novas possibilidades.<br />Um ponto de encontro para produtos e serviços.</p><span className="footer-location"><MapPin size={14} />Nampula, Moçambique</span></div><div><h4>Descobrir</h4><Link href="/produtos">Produtos</Link><Link href="/servicos">Serviços</Link><Link href="/lojas">Lojas locais</Link></div><div><h4>Fazer parte</h4><Link href="/registo">Criar conta</Link><Link href="/vendedor/candidatura">Abrir uma loja</Link><Link href="/conta/encomendas">As minhas encomendas</Link></div><div><h4>Deloya Serviços e Comércios</h4><Link href="/sobre">Sobre o projecto</Link><Link href="/ajuda">Ajuda e reclamações</Link><Link href="/privacidade">Privacidade</Link><Link href="/termos">Termos de utilização</Link></div></div><div className="container footer-bottom"><span>© 2026 Deloya Marketplace</span><span>Desenvolvido por Adelino Fonseca João</span></div></footer>; }
+function Footer() {
+  const socialExamples = [
+    { name: 'Instagram', Icon: Instagram },
+    { name: 'Facebook', Icon: Facebook },
+    { name: 'LinkedIn', Icon: Linkedin },
+  ];
+
+  return <footer className="site-footer">
+    <div className="container footer-top">
+      <div><Brand /><p>O comércio local, com novas possibilidades.<br />Um ponto de encontro para produtos e serviços.</p><span className="footer-location"><MapPin size={14} aria-hidden="true" />Nampula, Moçambique</span></div>
+      <div><h4>Descobrir</h4><Link href="/produtos">Produtos</Link><Link href="/servicos">Serviços</Link><Link href="/lojas">Lojas locais</Link></div>
+      <div><h4>Fazer parte</h4><Link href="/registo">Criar conta</Link><Link href="/vendedor/candidatura">Abrir uma loja</Link><Link href="/conta/encomendas">As minhas encomendas</Link></div>
+      <div><h4>Deloya Serviços e Comércios</h4><Link href="/sobre">Sobre o projecto</Link><Link href="/ajuda">Ajuda e reclamações</Link><Link href="/privacidade">Privacidade</Link><Link href="/termos">Termos de utilização</Link></div>
+    </div>
+    <div className="container footer-connect">
+      <section className="footer-contact" aria-labelledby="footer-contact-title">
+        <h4 id="footer-contact-title">Fale connosco</h4>
+        <p>Uma conversa aproxima-nos.</p>
+        <div className="footer-contact-links">
+          <a href="tel:+258871707406" className="footer-phone" aria-label="Ligar para +258 87 170 7406"><Phone size={17} aria-hidden="true" /><span><small>Telefone</small><strong>+258 87 170 7406</strong></span></a>
+          <a href="https://wa.me/258871707406" target="_blank" rel="noopener noreferrer" className="footer-whatsapp" aria-label="Conversar no WhatsApp pelo número +258 87 170 7406 (abre numa nova janela)"><MessageCircle size={17} aria-hidden="true" />WhatsApp<ArrowRight size={14} aria-hidden="true" /></a>
+        </div>
+      </section>
+      <section className="footer-social" aria-labelledby="footer-social-title">
+        <div className="footer-social-heading"><h4 id="footer-social-title">Redes sociais</h4><span>Exemplos de perfil</span></div>
+        <p>Adelino Fonseca João · perfis ilustrativos</p>
+        <ul className="footer-social-examples">
+          {socialExamples.map(({ name, Icon }) => <li key={name}><Icon size={18} aria-hidden="true" /><span><strong>{name}</strong><small>@adelino.fonseca.joao</small></span></li>)}
+        </ul>
+      </section>
+    </div>
+    <div className="container footer-bottom"><span>© 2026 Deloya Marketplace</span><span>Desenvolvido por Adelino Fonseca João</span></div>
+  </footer>;
+}
 
 function About({ kind }: { kind: string }) {
   if (kind === 'privacidade' || kind === 'termos') return <section className="container prose-page">

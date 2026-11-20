@@ -36,6 +36,8 @@ O carregamento de imagens exige armazenamento configurado. Sem essa configuraç�
 
 Iniciar sessão com uma conta administrativa e abrir `/admin/dashboard`. A área permite aprovar ou suspender lojas, moderar anúncios, gerir categorias, acompanhar encomendas e pagamentos, tratar reclamações e consultar auditoria.
 
+Em `/admin/categorias`, seleccionar **Nova categoria** e indicar o nome. O identificador no endereço é opcional e pode ser gerado automaticamente; quando preenchido, espaços e acentos são convertidos para um formato válido. Deixar **Sem categoria principal** para criar uma categoria principal, inclusive a primeira. Seleccionar uma categoria existente apenas para criar uma subcategoria. Erros aparecem no próprio formulário e os valores são preservados para correcção.
+
 Os relatórios CSV/PDF aceitam filtros de período, loja, categoria e estado conforme a permissão. Datas são interpretadas no fuso Africa/Maputo. Usar filtros para respeitar o limite de 5000 parcelas por exportação.
 
 Para criar a primeira conta administrativa, seguir o procedimento privado em [SECURITY.md](SECURITY.md). As contas opcionais do seed destinam-se a testes.
