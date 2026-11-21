@@ -28,7 +28,7 @@ def approved_store(db: Session, user: User, allow_pending=False) -> Store:
 
 
 def available(listing: Listing):
-    if listing.status != "published" or listing.store.status != "approved":
+    if listing.status != "published" or listing.store.status != "approved" or not listing.category.active:
         raise HTTPException(409, "Este anúncio já não está disponível")
     if listing.price is None:
         raise HTTPException(409, "Serviço sob consulta: envie uma solicitação ao vendedor")
@@ -63,13 +63,16 @@ def cart_data(db: Session, user: User):
         subtotal = (item.listing.price or Decimal("0")) * item.quantity
         total += subtotal
         result.append({"id": item.id, "quantity": item.quantity, "listing": listing_data(item.listing),
+                       "available": item.listing.status == "published" and item.listing.store.status == "approved"
+                           and item.listing.category.active and item.listing.price is not None,
                        "unit_price": money(item.listing.price), "subtotal": money(subtotal)})
     return {"items": result, "total": money(total), "is_demo": bool(items) and all(i.listing.is_demo for i in items)}
 
 
 def create_order(db: Session, user: User, data: OrderInput) -> Order:
     # Serialize checkouts for the same account, then lock inventory in a stable order.
-    db.execute(select(User.id).where(User.id == user.id).with_for_update())
+    from app.services.accounts import lock_active_account
+    user = lock_active_account(db, user)
     existing = db.scalar(select(Order).where(Order.customer_id == user.id, Order.idempotency_key == data.idempotency_key))
     if existing:
         return existing

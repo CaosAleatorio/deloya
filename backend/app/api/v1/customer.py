@@ -8,7 +8,8 @@ from app.api.v1.catalog import Page, PageSize
 from app.core.security import current_user, rate_limit
 from app.core.config import get_settings
 from app.database.session import get_db
-from app.models import CartItem, Listing, Order, PaymentAttempt, PaymentConfig, ServiceRequest, SupportTicket, User
+from app.models import CartItem, Listing, Order, PaymentAttempt, PaymentConfig, ServiceRequest, Store, SupportTicket, User
+from app.services.accounts import lock_active_account
 from app.schemas.requests import (CartAdd, OrderInput, PaymentInput, Quantity, ServiceRequestInput,
                                   Simulation, SupportInput, ManualPaymentInput)
 from app.services.commerce import (PaymentService, audit, available, cancel_order, cart_data,
@@ -33,7 +34,7 @@ def cart(user=Depends(current_user), db: Session = Depends(get_db)):
 
 @router.post("/cart", status_code=201)
 def add_cart(data: CartAdd, user=Depends(current_user), db: Session = Depends(get_db)):
-    db.execute(select(User.id).where(User.id == user.id).with_for_update())
+    user = lock_active_account(db, user)
     listing = db.get(Listing, data.listing_id)
     if not listing:
         raise HTTPException(404, "Anúncio não encontrado")
@@ -54,7 +55,7 @@ def add_cart(data: CartAdd, user=Depends(current_user), db: Session = Depends(ge
 
 @router.patch("/cart/{item_id}")
 def update_cart(item_id: UUID, data: Quantity, user=Depends(current_user), db: Session = Depends(get_db)):
-    db.execute(select(User.id).where(User.id == user.id).with_for_update())
+    user = lock_active_account(db, user)
     item = db.scalar(select(CartItem).where(CartItem.id == item_id, CartItem.user_id == user.id))
     if not item:
         raise HTTPException(404, "Item não encontrado")
@@ -70,7 +71,7 @@ def update_cart(item_id: UUID, data: Quantity, user=Depends(current_user), db: S
 
 @router.delete("/cart/{item_id}")
 def remove_cart(item_id: UUID, user=Depends(current_user), db: Session = Depends(get_db)):
-    db.execute(select(User.id).where(User.id == user.id).with_for_update())
+    user = lock_active_account(db, user)
     item = db.scalar(select(CartItem).where(CartItem.id == item_id, CartItem.user_id == user.id))
     if not item:
         raise HTTPException(404, "Item não encontrado")
@@ -180,8 +181,14 @@ def service_requests(page: Page = 1, page_size: PageSize = 20, user=Depends(curr
 @router.post("/service-requests", status_code=201)
 def create_service_request(data: ServiceRequestInput, request: Request, user=Depends(current_user), db: Session = Depends(get_db)):
     rate_limit(db, request, f"service_request:{user.id}", 20)
-    listing = db.get(Listing, data.listing_id)
-    if not listing or listing.kind != "service" or listing.status != "published" or listing.store.status != "approved":
+    user = lock_active_account(db, user)
+    listing = db.scalar(select(Listing).where(Listing.id == data.listing_id).with_for_update()
+                        .execution_options(populate_existing=True))
+    if not listing or listing.kind != "service" or listing.status != "published":
+        raise HTTPException(404, "Serviço não encontrado")
+    store = db.scalar(select(Store).where(Store.id == listing.store_id).with_for_update()
+                      .execution_options(populate_existing=True))
+    if store.status != "approved":
         raise HTTPException(404, "Serviço não encontrado")
     item = ServiceRequest(user_id=user.id, listing_id=listing.id, store_id=listing.store_id,
                           message=data.message, requested_date=data.requested_date)

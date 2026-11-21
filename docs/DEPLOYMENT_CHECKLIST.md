@@ -80,6 +80,8 @@ Não registar strings de conexão, passwords ou tokens.
 
 ## Limites desta entrega
 
+**Actualização de 21/11/2026:** o perfil passa a permitir editar nome/telemóvel/email, trocar a senha e eliminar a conta com reautenticação e protecção de histórico/pendências. As moradas têm CRUD na interface. Produtos e serviços têm edição e eliminação explícitas, com arquivo lógico e preservação das encomendas. Nenhum perfil ou produto real foi alterado/eliminado para os testes; as verificações de dados usam PostgreSQL local e os roteiros browser interceptam as APIs.
+
 **Actualização de 20/11/2026:** a pedido do proprietário, foram adicionadas 16 categorias (oito principais/oito subcategorias) e três lojas ilustrativas: Adelino Tecnologia, Adelino Moda & Acessórios e Adelino Serviços. As lojas MetaB e Guy's Beauty existentes não foram alteradas. As novas lojas estão identificadas como exemplos e não têm carteiras de pagamento configuradas. O rodapé apresenta o contacto fornecido e perfis sociais explicitamente ilustrativos. A correcção do formulário foi validada conforme [VALIDATION.md](VALIDATION.md).
 
 A publicação é persistente nas contas autorizadas, com API/base e proxy verificados. O utilizador dispensou testes adicionais que criariam contas e um pedido de apoio temporários na base Production; esses dados não foram criados. Os fluxos de login, anexos e isolamento entre utilizadores têm testes locais, sem repetição com contas de produção. O Blob real foi testado directamente pelo SDK com marcador sem dados pessoais.

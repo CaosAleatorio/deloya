@@ -24,13 +24,21 @@ As chamadas API dos dois roteiros novos de browser são simuladas; testes de dom
 
 ## Verificações executadas
 
+### Actualização de 21/11/2026 — perfil, acessos e eliminação do catálogo
+
+- Backend completo: **204 testes passaram**, 83,62 s, exclusivamente na base PostgreSQL local `deloya_test`. Inclui alteração parcial do perfil, email único com reautenticação, troca de senha, revogação de sessões, anonimização e conservação do histórico, bloqueio de pendências/último administrador e concorrência com checkout, login, refresh e uploads.
+- Frontend: **35 testes passaram**; ESLint, TypeScript e build de produção aprovados.
+- Browser sobre compilação de produção local, com todas as APIs simuladas: **6 cenários de conta** (cliente/vendedor/admin em 1440/390 px) e **4 cenários de catálogo** (produto/serviço em 1440/390 px), sem erros JavaScript ou overflow. As verificações Axe do perfil não reportaram violações.
+- CRUD de moradas passou na interface. A edição de anúncios conserva a categoria carregada de forma assíncrona. A eliminação pede confirmação, preserva encomendas e não permite republicar por PATCH. Artigos arquivados no carrinho ficam indisponíveis e removíveis.
+- Não foram alterados emails/senhas nem eliminadas contas ou produtos reais em produção para realizar estes testes. Os ficheiros locais de senhas não são versionados.
+
 ### Actualização de 20/11/2026 — categorias e contacto
 
 - Corrigida a expressão do identificador de categoria para o modo `v` do Chromium. O formulário normaliza espaços/acentos, esclarece os campos opcionais e mostra validação e falhas da API junto dos campos.
 - Frontend: **35 testes passaram**, ESLint, TypeScript e build de produção aprovados.
 - Regressão de categorias em 1440/390 px, com API simulada: primeira categoria sem pai/identificador, subcategoria, edição, normalização e repetição após erro passaram; sem erros JavaScript ou overflow.
 - Rodapé verificado em 1440/375/320 px: telefone/WhatsApp `+258871707406`, exemplos de perfis de Adelino identificados e sem links para contas presumidas. Sem overflow ou violações Axe no âmbito do rodapé.
-- Produção: criadas pela API administrativa oito categorias principais e oito subcategorias. Acrescentadas três lojas de exemplo solicitadas, identificadas com `is_demo=true`, sem carteiras de pagamento; as duas lojas reais preexistentes foram preservadas. Registos de criação das lojas ficaram na auditoria. Donos técnicos das lojas ilustrativas têm login desactivado.
+- Produção: criadas pela API administrativa oito categorias principais e oito subcategorias. Acrescentadas três lojas de exemplo solicitadas, identificadas com `is_demo=true`, sem carteiras de pagamento; as duas lojas reais preexistentes foram preservadas. Registos de criação das lojas ficaram na auditoria. Os acessos das lojas ilustrativas foram posteriormente activados a pedido do proprietário; credenciais permanecem apenas num ficheiro local ignorado.
 
 Os resultados seguintes preservam o histórico da entrega anterior.
 

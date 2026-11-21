@@ -21,6 +21,16 @@ Para aceder por outro endereço da rede, seguir a configuração de origens no R
 
 Compras a várias lojas exigem transferências separadas. Encomendas elegíveis podem ser canceladas antes de existir referência pendente ou recebimento confirmado. Para esclarecer um problema, abrir uma reclamação associada à própria encomenda; pode anexar imagens/PDF privados até 3 MiB, quando o armazenamento estiver configurado.
 
+## Gerir o perfil e os acessos
+
+Clientes, vendedores e administradores podem abrir **A minha conta** em `/conta`. Em **Dados pessoais**, editar nome, telemóvel e email. Alterar email exige a palavra-passe actual; o novo endereço passa a ser o login. Em **Alterar palavra-passe**, indicar a actual, a nova (12–128 caracteres) e a confirmação. Alterar email/senha termina as outras sessões e mantém a sessão que fez a alteração.
+
+As moradas podem ser adicionadas, consultadas, editadas e eliminadas nesta mesma página. A eliminação pede confirmação.
+
+**Eliminar a minha conta** exige a senha actual e escrever `ELIMINAR`. A operação encerra acesso e anonimiza o perfil; conserva histórico de encomendas, pagamentos, apoio e auditoria. Uma loja própria é suspensa e os anúncios arquivados. Resolver compromissos pendentes antes de eliminar; a última conta administrativa não pode ser eliminada.
+
+Os ficheiros locais de acessos iniciais não são actualizados pela aplicação: após mudar email/senha no site, usar os novos dados no login.
+
 ## Vendedor
 
 1. Iniciar sessão e apresentar a candidatura da loja com os contactos e dados comerciais. Para receber por M-Pesa, indicar número Vodacom e nome do titular; para e-Mola, número Movitel e nome do titular. Usar o nome exacto apresentado pela carteira. Estes campos também podem ser alterados na edição da loja.
@@ -31,6 +41,8 @@ Compras a várias lojas exigem transferências separadas. Encomendas elegíveis 
 6. Nas encomendas, conferir cada referência na própria carteira. Confirmar apenas depois de verificar valor e recebimento; rejeitar com motivo se não encontrar a transferência. Depois processar a parcela paga e as solicitações de serviço, seguindo as transições disponíveis.
 
 O carregamento de imagens exige armazenamento configurado. Sem essa configuração, a aplicação apresenta a indisponibilidade. Cada vendedor gere apenas as suas imagens, anúncios e encomendas.
+
+Em **Os seus produtos/serviços**, **Editar** abre os dados actuais e **Eliminar do catálogo** pede confirmação. A eliminação retira o anúncio da loja e da pesquisa, preservando encomendas passadas. Um anúncio eliminado não pode ser republicado através da edição. Se estiver num carrinho, fica indisponível e removível antes de continuar a compra.
 
 ## Administrador
 

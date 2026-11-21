@@ -1,10 +1,10 @@
 from datetime import datetime
 import re
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, field_validator, model_validator
 
 
 class StrictModel(BaseModel):
@@ -14,18 +14,43 @@ class StrictModel(BaseModel):
 class Register(StrictModel):
     name: str = Field(min_length=2, max_length=120)
     email: EmailStr
-    password: str = Field(min_length=12, max_length=128)
+    password: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=12, max_length=128)
     phone: str = Field(default="", max_length=30)
 
 
 class Login(StrictModel):
     email: EmailStr
-    password: str = Field(min_length=1, max_length=128)
+    password: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=128)
 
 
 class ProfileUpdate(StrictModel):
-    name: str = Field(min_length=2, max_length=120)
-    phone: str = Field(default="", max_length=30)
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    phone: str | None = Field(default=None, max_length=30)
+    email: EmailStr | None = Field(default=None, max_length=254)
+    current_password: Annotated[str, StringConstraints(strip_whitespace=False)] | None = Field(default=None, min_length=1, max_length=128)
+
+    @field_validator("name", "phone", "email", mode="before")
+    @classmethod
+    def non_null_profile_field(cls, value):
+        if value is None:
+            raise ValueError("Indique um valor para este campo")
+        return value
+
+    @model_validator(mode="after")
+    def profile_changes(self):
+        if not self.model_fields_set.intersection({"name", "phone", "email"}):
+            raise ValueError("Indique os dados do perfil a actualizar")
+        return self
+
+
+class PasswordChange(StrictModel):
+    current_password: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=128)
+    new_password: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=12, max_length=128)
+
+
+class AccountDelete(StrictModel):
+    current_password: Annotated[str, StringConstraints(strip_whitespace=False)] = Field(min_length=1, max_length=128)
+    confirmation: Literal["ELIMINAR"]
 
 
 class AddressInput(StrictModel):

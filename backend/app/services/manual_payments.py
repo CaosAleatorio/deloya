@@ -24,7 +24,7 @@ def ensure_manual():
 def report_transfer(db: Session, user: User, order_id: UUID, vendor_order_id: UUID, data: ManualPaymentInput):
     ensure_manual()
     # The user lock also serializes reuse of an idempotency key across different orders.
-    db.execute(select(User.id).where(User.id == user.id).with_for_update())
+    db.execute(select(User.id).where(User.id == user.id).with_for_update(key_share=True, read=False))
     order = db.scalar(select(Order).where(Order.id == order_id, Order.customer_id == user.id)
                       .with_for_update().execution_options(populate_existing=True))
     if not order:

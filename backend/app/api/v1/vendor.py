@@ -15,6 +15,7 @@ from app.core.security import current_user
 from app.database.session import get_db
 from app.models import Category, Listing, Order, PaymentAttempt, ServiceRequest, Store, UploadedImage, VendorOrder
 from app.schemas.requests import ListingInput, ManualPaymentReview, ServiceRequestUpdate, StoreInput, VendorTransition
+from app.services.accounts import lock_active_account
 from app.services.commerce import aggregate_order_status, approved_store, audit
 from app.services.manual_payments import review_transfer
 from app.services.blob_storage import blob_session
@@ -25,6 +26,7 @@ router = APIRouter(prefix="/vendor")
 
 @router.post("/application", status_code=201)
 def application(data: StoreInput, user=Depends(current_user), db: Session = Depends(get_db)):
+    user = lock_active_account(db, user)
     if db.scalar(select(Store).where(Store.owner_id == user.id)):
         raise HTTPException(409, "Já existe uma candidatura ou loja nesta conta")
     if data.logo_url and not data.logo_url.startswith("/demo/"):
@@ -47,6 +49,7 @@ def own_store(user=Depends(current_user), db: Session = Depends(get_db)):
 
 @router.patch("/store")
 def update_store(data: StoreInput, user=Depends(current_user), db: Session = Depends(get_db)):
+    user = lock_active_account(db, user)
     store = approved_store(db, user)
     store = db.scalar(select(Store).where(Store.id == store.id).with_for_update()
                       .execution_options(populate_existing=True))
@@ -78,9 +81,11 @@ def dashboard(user=Depends(current_user), db: Session = Depends(get_db)):
 
 
 def own_listing(db, user, listing_id, kind):
+    user = lock_active_account(db, user)
     store = approved_store(db, user)
     listing = db.scalar(select(Listing).where(Listing.id == listing_id, Listing.store_id == store.id,
-                                            Listing.kind == kind).with_for_update())
+                                            Listing.kind == kind).with_for_update()
+                        .execution_options(populate_existing=True))
     if not listing:
         raise HTTPException(404, "Anúncio não encontrado")
     return store, listing
@@ -115,6 +120,7 @@ def listing_list_endpoint(kind):
 
 def listing_create_endpoint(kind):
     def endpoint(data: ListingInput, user=Depends(current_user), db: Session = Depends(get_db)):
+        user = lock_active_account(db, user)
         store = approved_store(db, user)
         validate_listing(db, data, kind)
         validate_images(db, store, [data.image_url, *data.images])
@@ -131,6 +137,8 @@ def listing_create_endpoint(kind):
 def listing_update_endpoint(kind):
     def endpoint(listing_id: UUID, data: ListingInput, user=Depends(current_user), db: Session = Depends(get_db)):
         store, listing = own_listing(db, user, listing_id, kind)
+        if listing.status == "archived":
+            raise HTTPException(409, "Este anúncio foi eliminado do catálogo e não pode ser editado ou republicado")
         validate_listing(db, data, kind)
         validate_images(db, store, [data.image_url, *data.images])
         if data.expected_updated_at is not None:
@@ -149,10 +157,11 @@ def listing_update_endpoint(kind):
 def listing_delete_endpoint(kind):
     def endpoint(listing_id: UUID, user=Depends(current_user), db: Session = Depends(get_db)):
         _, listing = own_listing(db, user, listing_id, kind)
-        listing.status = "archived"
-        audit(db, user, "listing.archived", listing)
+        if listing.status != "archived":
+            listing.status = "archived"
+            audit(db, user, "listing.archived", listing)
         db.commit()
-        return {"message": "Anúncio arquivado"}
+        return {"message": "Anúncio eliminado do catálogo. O histórico das encomendas foi preservado."}
     return endpoint
 
 
@@ -175,6 +184,7 @@ def vendor_orders(status: str | None = None, page: Page = 1, page_size: PageSize
 
 @router.patch("/orders/{vendor_order_id}")
 def transition(vendor_order_id: UUID, data: VendorTransition, user=Depends(current_user), db: Session = Depends(get_db)):
+    user = lock_active_account(db, user)
     store = approved_store(db, user)
     initial = db.scalar(select(VendorOrder).where(VendorOrder.id == vendor_order_id, VendorOrder.store_id == store.id))
     if not initial:
@@ -218,6 +228,7 @@ def manual_payments(status: str | None = None, page: Page = 1, page_size: PageSi
 @router.post("/orders/{vendor_order_id}/payments/{payment_id}/review")
 def review_payment(vendor_order_id: UUID, payment_id: UUID, data: ManualPaymentReview,
                    user=Depends(current_user), db: Session = Depends(get_db)):
+    user = lock_active_account(db, user)
     return payment_data(review_transfer(db, user, vendor_order_id, payment_id, data))
 
 
@@ -230,6 +241,7 @@ def requests(page: Page = 1, page_size: PageSize = 20, user=Depends(current_user
 
 @router.patch("/service-requests/{request_id}")
 def update_request(request_id: UUID, data: ServiceRequestUpdate, user=Depends(current_user), db: Session = Depends(get_db)):
+    user = lock_active_account(db, user)
     store = approved_store(db, user)
     item = db.scalar(select(ServiceRequest).where(ServiceRequest.id == request_id, ServiceRequest.store_id == store.id).with_for_update())
     if not item:
@@ -245,6 +257,7 @@ def update_request(request_id: UUID, data: ServiceRequestUpdate, user=Depends(cu
 
 @router.post("/uploads", status_code=201)
 def upload(file: UploadFile = File(...), user=Depends(current_user), db: Session = Depends(get_db)):
+    user = lock_active_account(db, user)
     store = approved_store(db, user)
     settings = get_settings()
     if not settings.blob_read_write_token or not settings.blob_public_base_url:
@@ -283,6 +296,7 @@ def upload(file: UploadFile = File(...), user=Depends(current_user), db: Session
 
 @router.delete("/uploads/{image_id}")
 def delete_upload(image_id: UUID, user=Depends(current_user), db: Session = Depends(get_db)):
+    user = lock_active_account(db, user)
     store = approved_store(db, user)
     image = db.scalar(select(UploadedImage).where(UploadedImage.id == image_id, UploadedImage.store_id == store.id).with_for_update())
     if not image:

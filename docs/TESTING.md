@@ -54,9 +54,11 @@ O teste funcional cria uma conta e uma encomenda **de teste**, percorre as área
 ```powershell
 node frontend/tests/manual-payments.browser.mjs
 node frontend/tests/support-attachments.browser.mjs
+node frontend/tests/account-profile.browser.mjs
+node frontend/tests/listings.browser.mjs
 ```
 
-Estas duas regressões interceptam as respostas API no browser: não criam transferências, encomendas ou ficheiros remotos. Exercitam desktop/telemóvel, estados parciais, referências por loja, confirmação/recusa e anexos privados. A suite backend complementa a UI com transacções PostgreSQL reais. Nenhuma destas verificações locais confirma armazenamento ou publicação online.
+Estas regressões interceptam as respostas API no browser: não criam contas, transferências, encomendas ou ficheiros remotos. Exercitam desktop/telemóvel, estados parciais, referências por loja, confirmação/recusa, anexos privados, edição de perfil/email/senha/moradas, eliminação de conta e CRUD de produtos/serviços. A suite backend complementa a UI com transacções PostgreSQL reais, incluindo revogação de sessões e encerramentos concorrentes. Nenhuma destas verificações locais confirma armazenamento ou publicação online.
 
 A análise axe verifica quatro páginas em larguras de 1440 e 390 px. Um resultado sem violações automáticas deve ser complementado por avaliação manual de acessibilidade.
 

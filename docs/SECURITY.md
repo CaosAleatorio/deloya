@@ -24,6 +24,10 @@ A dependência de desenvolvimento `minimatch` usada por `@typescript-eslint/type
 
 O cliente envia CSRF nas mutações conforme a API. Cookies de autenticação são HttpOnly; somente o token CSRF, incapaz de autenticar sozinho, precisa de ser legível. Não guardar tokens de autenticação em localStorage.
 
+Trocar senha ou email requer a senha actual, limite de tentativas e revogação de todas as sessões anteriores. A sessão actual recebe novos cookies. Login, refresh e mudanças de credenciais serializam primeiro na conta, evitando emissão de acesso após encerramento ou alteração concorrente. Logs não incluem senhas ou novos emails.
+
+Eliminar conta anonimiza o perfil e remove moradas/carrinho; conserva referências e registos transaccionais. São exigidas senha actual e confirmação explícita, sem permitir encerramento com compromissos pendentes ou da última administração activa. A loja é suspensa e os anúncios arquivados, com guards para impedir reactivação de titular encerrado. O histórico e os anexos privados não são apagados por uma eliminação lógica.
+
 Em desenvolvimento, o backend aceita o alias exacto `localhost`/`127.0.0.1` com o mesmo protocolo e porta. Outros endereços exigem autorização explícita em `DEVELOPMENT_FRONTEND_ORIGINS`; esta lista é ignorada em produção e nos testes. O Next.js autoriza hosts de desenvolvimento adicionais através de `DEV_ALLOWED_HOSTS` em `frontend/.env.local`, sem wildcards. A mesma lista de origens backend é aplicada a CORS e CSRF, e um token CSRF válido continua obrigatório.
 
 Formulários de login/registo usam POST explícito e controlos desactivados antes da hidratação. A falha ou desactivação de JavaScript não deve provocar navegação GET com credenciais na query string. A regressão de navegador testa os dois modos com dados fictícios.

@@ -43,6 +43,12 @@ def csrf_token(request: Request, response: Response) -> str:
 
 
 def issue_session(db: Session, user: User, response: Response, family_id=None):
+    # All issuers serialize on the account before touching sessions. A refresh or
+    # login already in flight cannot issue access after account closure/revocation.
+    user = db.scalar(select(User).where(User.id == user.id).with_for_update(key_share=True, read=False)
+                     .execution_options(populate_existing=True))
+    if not user or not user.active:
+        raise HTTPException(401, "Inicie sessão para continuar")
     settings = get_settings()
     refresh = secrets.token_urlsafe(48)
     session = AuthSession(user_id=user.id, refresh_hash=token_hash(refresh),

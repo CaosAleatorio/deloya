@@ -20,6 +20,11 @@ from app.services.presentation import (category_data, entity, listing_data, mone
 router = APIRouter(prefix="/admin", dependencies=[Depends(admin_user)])
 
 
+def writable_admin(user=Depends(admin_user), db: Session = Depends(get_db)):
+    from app.services.accounts import lock_active_account
+    return admin_user(lock_active_account(db, user))
+
+
 @router.get("/dashboard")
 def dashboard(db: Session = Depends(get_db)):
     count = lambda model, *conditions: db.scalar(select(func.count()).select_from(model).where(*conditions))
@@ -55,10 +60,14 @@ def stores(status: str | None = None, page: Page = 1, page_size: PageSize = 20, 
 
 
 @router.patch("/stores/{store_id}")
-def moderate_store(store_id: UUID, data: StoreModeration, user=Depends(admin_user), db: Session = Depends(get_db)):
+def moderate_store(store_id: UUID, data: StoreModeration, user=Depends(writable_admin), db: Session = Depends(get_db)):
     store = db.scalar(select(Store).where(Store.id == store_id).with_for_update())
     if not store:
         raise HTTPException(404, "Loja não encontrada")
+    if data.status == "approved":
+        owner = db.scalar(select(User).where(User.id == store.owner_id).execution_options(populate_existing=True))
+        if not owner or not owner.active:
+            raise HTTPException(409, "A conta do titular está encerrada; esta loja não pode ser aprovada")
     store.status = data.status
     audit(db, user, "store.moderated", store, {"status": data.status, "reason": data.reason})
     db.commit()
@@ -77,7 +86,7 @@ def catalog(kind: str | None = None, status: str | None = None,
 
 
 @router.patch("/catalog/{listing_id}")
-def moderate_listing(listing_id: UUID, data: ListingModeration, user=Depends(admin_user), db: Session = Depends(get_db)):
+def moderate_listing(listing_id: UUID, data: ListingModeration, user=Depends(writable_admin), db: Session = Depends(get_db)):
     listing = db.scalar(select(Listing).where(Listing.id == listing_id).with_for_update())
     if not listing:
         raise HTTPException(404, "Anúncio não encontrado")
@@ -111,7 +120,7 @@ def validate_parent(db, parent_id, category_id=None):
 
 
 @router.post("/categories", status_code=201)
-def create_category(data: CategoryInput, user=Depends(admin_user), db: Session = Depends(get_db)):
+def create_category(data: CategoryInput, user=Depends(writable_admin), db: Session = Depends(get_db)):
     validate_parent(db, data.parent_id)
     item = Category(name=data.name, slug=data.slug or slugify(data.name), parent_id=data.parent_id)
     db.add(item)
@@ -122,7 +131,7 @@ def create_category(data: CategoryInput, user=Depends(admin_user), db: Session =
 
 
 @router.patch("/categories/{category_id}")
-def update_category(category_id: UUID, data: CategoryInput, user=Depends(admin_user), db: Session = Depends(get_db)):
+def update_category(category_id: UUID, data: CategoryInput, user=Depends(writable_admin), db: Session = Depends(get_db)):
     item = db.get(Category, category_id)
     if not item:
         raise HTTPException(404, "Categoria não encontrada")
@@ -134,7 +143,7 @@ def update_category(category_id: UUID, data: CategoryInput, user=Depends(admin_u
 
 
 @router.delete("/categories/{category_id}")
-def archive_category(category_id: UUID, user=Depends(admin_user), db: Session = Depends(get_db)):
+def archive_category(category_id: UUID, user=Depends(writable_admin), db: Session = Depends(get_db)):
     item = db.get(Category, category_id)
     if not item:
         raise HTTPException(404, "Categoria não encontrada")
@@ -176,7 +185,7 @@ def payment_config(db: Session = Depends(get_db)):
 
 
 @router.patch("/payment-config")
-def update_payment_config(data: PaymentConfigInput, user=Depends(admin_user), db: Session = Depends(get_db)):
+def update_payment_config(data: PaymentConfigInput, user=Depends(writable_admin), db: Session = Depends(get_db)):
     if data.demo_enabled and get_settings().payment_mode != "demo":
         raise HTTPException(409, "O modo de pagamento configurado não permite pagamentos de teste neste ambiente")
     config = db.get(PaymentConfig, 1)
@@ -204,7 +213,7 @@ def support(status: str | None = None, page: Page = 1, page_size: PageSize = 20,
 
 
 @router.patch("/support/{ticket_id}")
-def resolve_support(ticket_id: UUID, data: SupportUpdate, user=Depends(admin_user), db: Session = Depends(get_db)):
+def resolve_support(ticket_id: UUID, data: SupportUpdate, user=Depends(writable_admin), db: Session = Depends(get_db)):
     ticket = db.get(SupportTicket, ticket_id)
     if not ticket:
         raise HTTPException(404, "Reclamação não encontrada")

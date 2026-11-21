@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, Clock3, CreditCard, MapPin, Minus, Package, Plus, ShieldCheck, ShoppingBag, Store as StoreIcon, Trash2, UserRound } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, Clock3, CreditCard, MapPin, Minus, Package, Pencil, Plus, ShieldCheck, ShoppingBag, Store as StoreIcon, Trash2, UserRound } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,7 +14,8 @@ import { Badge, Button, DemoNotice, Empty, ErrorPanel, Field, Loading, Modal, Pa
 import { SupportAttachments } from '../components/support-attachments';
 import { ManualPayments, PaymentHistory } from '../components/manual-payments';
 import { canCancelOrder } from '../lib/payment-state';
-import type { Cart, Order, Page, Payment, PaymentSettings, User } from '../types';
+import { AccountProfileForms } from './account-profile';
+import type { Cart, Order, Page, Payment, PaymentSettings } from '../types';
 
 export function Gate({ children, role }: { children: React.ReactNode; role?: string }) {
   const { user, loading } = useAuth();
@@ -44,20 +45,60 @@ export function AuthPage({ register: registering }: { register: boolean }) {
 }
 
 function Profile() {
-  const { user, refresh } = useAuth();
-  const [busy, setBusy] = useState(false);
-  async function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); setBusy(true); const values = new FormData(event.currentTarget); try { await api<User>('/me', { method: 'PATCH', body: json({ name: values.get('name'), phone: values.get('phone') || '' }) }); await refresh(); toast.success('Perfil actualizado.'); } catch (error) { toast.error((error as Error).message); } finally { setBusy(false); } }
-  return <div className="account-grid"><article className="panel"><h2>Dados pessoais</h2><form className="form-stack" onSubmit={submit}><Field label="Nome completo"><input name="name" defaultValue={user?.name} minLength={2} required /></Field><Field label="Email"><input value={user?.email ?? ''} readOnly /></Field><Field label="Telemóvel"><input name="phone" type="tel" defaultValue={user?.phone ?? ''} /></Field><Button busy={busy}>Guardar alterações</Button></form></article><article className="panel account-links"><h2>O seu espaço</h2><Link href="/conta/encomendas"><Package /><span>As minhas encomendas<small>Consulte estados e pagamentos</small></span><ChevronRight size={18} /></Link><Link href="/carrinho"><ShoppingBag /><span>O meu carrinho<small>Continue a sua escolha</small></span><ChevronRight size={18} /></Link><Link href={user?.role === 'admin' ? '/admin/dashboard' : user?.role === 'vendor' ? '/vendedor/dashboard' : '/vendedor/candidatura'}><StoreIcon /><span>{user?.role === 'admin' ? 'Administração' : user?.role === 'vendor' ? 'A minha loja' : 'Quero vender na Deloya'}<small>Produtos e serviços locais</small></span><ChevronRight size={18} /></Link><Link href="/ajuda"><ShieldCheck /><span>Ajuda e reclamações<small>Fale com a administração</small></span><ChevronRight size={18} /></Link>{user?.is_demo && <Badge tone="orange">Conta de teste</Badge>}</article><AddressBook /></div>;
+  const { user } = useAuth();
+  return <div className="account-grid"><AccountProfileForms key={user?.id} /><article className="panel account-links"><h2>O seu espaço</h2><Link href="/conta/encomendas"><Package /><span>As minhas encomendas<small>Consulte estados e pagamentos</small></span><ChevronRight size={18} /></Link><Link href="/carrinho"><ShoppingBag /><span>O meu carrinho<small>Continue a sua escolha</small></span><ChevronRight size={18} /></Link><Link href={user?.role === 'admin' ? '/admin/dashboard' : user?.role === 'vendor' ? '/vendedor/dashboard' : '/vendedor/candidatura'}><StoreIcon /><span>{user?.role === 'admin' ? 'Administração' : user?.role === 'vendor' ? 'A minha loja' : 'Quero vender na Deloya'}<small>Produtos e serviços locais</small></span><ChevronRight size={18} /></Link><Link href="/ajuda"><ShieldCheck /><span>Ajuda e reclamações<small>Fale com a administração</small></span><ChevronRight size={18} /></Link>{user?.is_demo && <Badge tone="orange">Conta de teste</Badge>}</article><AddressBook /></div>;
 }
 
 type Address = { id: string; label: string; address: string; province: string; district: string; phone: string };
 function AddressBook() {
   const query = useQuery<Page<Address> | Address[]>('/me/addresses');
-  const [open, setOpen] = useState(false);
+  const hydrated = useHydrated();
+  const [editor, setEditor] = useState<Address | 'new' | null>(null);
+  const [deleting, setDeleting] = useState<Address | null>(null);
   const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
+  const [error, setError] = useState('');
   const items = Array.isArray(query.data) ? query.data : query.data?.items ?? [];
-  async function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); setBusy(true); const data = Object.fromEntries(new FormData(event.currentTarget)); try { await api('/me/addresses', { method: 'POST', body: json(data) }); query.reload(); setOpen(false); toast.success('Morada guardada.'); } catch (error) { toast.error((error as Error).message); } finally { setBusy(false); } }
-  return <article className="panel full-width"><div className="section-heading"><h2>Moradas guardadas</h2><Button variant="secondary" onClick={() => setOpen(true)}><Plus size={16} />Adicionar morada</Button></div>{query.error ? <ErrorPanel message={query.error} retry={query.reload} /> : items.length ? <div className="address-grid">{items.map((item) => <div className="address-card" key={item.id}><MapPin size={20} /><div><strong>{item.label}</strong><p>{item.address}<br />{item.district}, {item.province}<br />{item.phone}</p></div><button className="icon-button" aria-label={`Eliminar ${item.label}`} onClick={async () => { try { await api(`/me/addresses/${item.id}`, { method: 'DELETE' }); query.reload(); } catch (error) { toast.error((error as Error).message); } }}><Trash2 size={16} /></button></div>)}</div> : <p className="muted">Ainda não adicionou moradas.</p>}<Modal open={open} onOpenChange={setOpen} title="Adicionar morada"><form className="form-stack" onSubmit={submit}><Field label="Nome da morada"><input name="label" placeholder="Ex.: Casa" required /></Field><Field label="Morada e ponto de referência"><textarea name="address" required minLength={5} rows={2} /></Field><div className="two-columns"><Field label="Província"><input name="province" defaultValue="Nampula" required /></Field><Field label="Distrito"><input name="district" defaultValue="Nampula" required /></Field></div><Field label="Telemóvel de contacto"><input name="phone" type="tel" required /></Field><Button busy={busy}>Guardar morada</Button></form></Modal></article>;
+  const editing = editor && editor !== 'new' ? editor : null;
+  function openEditor(address: Address | 'new') { setError(''); setEditor(address); }
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!hydrated || inFlight.current || !editor) return;
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const data = Object.fromEntries(Object.entries(values).map(([name, value]) => [name, String(value).trim()]));
+    setError('');
+    if (!data.label || data.address.length < 5 || data.province.length < 2 || data.district.length < 2) { setError('Preencha o nome e uma morada válida, com província e distrito.'); return; }
+    inFlight.current = true;
+    setBusy(true);
+    try { await api(editing ? `/me/addresses/${editing.id}` : '/me/addresses', { method: editing ? 'PATCH' : 'POST', body: json(data) }); query.reload(); setEditor(null); toast.success(editing ? 'Morada actualizada.' : 'Morada guardada.'); } catch (reason) { setError((reason as Error).message); } finally { inFlight.current = false; setBusy(false); }
+  }
+  async function remove(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!hydrated || inFlight.current || !deleting) return;
+    inFlight.current = true;
+    setBusy(true);
+    setError('');
+    try { await api(`/me/addresses/${deleting.id}`, { method: 'DELETE' }); query.reload(); setDeleting(null); toast.success('Morada eliminada.'); } catch (reason) { setError((reason as Error).message); } finally { inFlight.current = false; setBusy(false); }
+  }
+  return <article className="panel full-width"><div className="section-heading"><h2>Moradas guardadas</h2><Button type="button" variant="secondary" disabled={busy || !hydrated} onClick={() => openEditor('new')}><Plus size={16} />Adicionar morada</Button></div>{query.error ? <ErrorPanel message={query.error} retry={query.reload} /> : query.loading ? <Loading /> : items.length ? <div className="address-grid">{items.map((item) => <div className="address-card" key={item.id}><MapPin size={20} /><div style={{ minWidth: 0, overflowWrap: 'anywhere' }}><strong>{item.label}</strong><p>{item.address}<br />{item.district}, {item.province}<br />{item.phone}</p></div><div style={{ display: 'flex', flexDirection: 'column', marginLeft: 'auto', alignSelf: 'flex-start' }}><button type="button" className="icon-button" disabled={busy} aria-label={`Editar morada ${item.label}`} onClick={() => openEditor(item)}><Pencil size={16} /></button><button type="button" className="icon-button" disabled={busy} aria-label={`Eliminar morada ${item.label}`} onClick={() => { setError(''); setDeleting(item); }}><Trash2 size={16} /></button></div></div>)}</div> : <p className="muted">Ainda não adicionou moradas.</p>}
+    <Modal open={editor !== null} onOpenChange={(open) => { if (!open && !inFlight.current) setEditor(null); }} title={editing ? 'Editar morada' : 'Adicionar morada'}>
+      <form key={editing?.id ?? 'new'} className="form-stack" method="post" action="/conta" onSubmit={submit} aria-busy={busy}><fieldset className="form-stack" disabled={!hydrated || busy}>
+        <Field label="Nome da morada"><input name="label" placeholder="Ex.: Casa" defaultValue={editing?.label ?? ''} required maxLength={80} /></Field>
+        <Field label="Morada e ponto de referência"><textarea name="address" defaultValue={editing?.address ?? ''} required minLength={5} maxLength={500} rows={2} /></Field>
+        <div className="two-columns"><Field label="Província"><input name="province" defaultValue={editing?.province ?? 'Nampula'} minLength={2} maxLength={80} required /></Field><Field label="Distrito"><input name="district" defaultValue={editing?.district ?? 'Nampula'} minLength={2} maxLength={80} required /></Field></div>
+        <Field label="Telemóvel de contacto"><input name="phone" type="tel" defaultValue={editing?.phone ?? ''} maxLength={30} required /></Field>
+        {error && <p className="inline-error" role="alert">{error}</p>}
+        <Button type="submit" busy={busy}>Guardar morada</Button>
+      </fieldset></form>
+    </Modal>
+    <Modal open={deleting !== null} onOpenChange={(open) => { if (!open && !inFlight.current) setDeleting(null); }} title="Eliminar morada" description="Esta morada deixará de estar disponível para futuras encomendas.">
+      <form className="form-stack" method="post" action="/conta" onSubmit={remove} aria-busy={busy}>
+        <p style={{ overflowWrap: 'anywhere' }}><strong>{deleting?.label}</strong><br />{deleting?.address}</p>
+        {error && <p className="inline-error" role="alert">{error}</p>}
+        <div className="button-row"><Button type="button" variant="secondary" disabled={busy} onClick={() => setDeleting(null)}>Manter morada</Button><Button type="submit" variant="danger" busy={busy} disabled={!hydrated}>Eliminar morada</Button></div>
+      </form>
+    </Modal>
+  </article>;
 }
 
 export function AccountPage() { const { user } = useAuth(); return <Gate><section className="container section-block"><div className="page-heading"><div><span className="eyebrow">A SUA CONTA</span><h1>Olá, {user?.name.split(' ')[0]}.</h1><p>Gerir os seus dados e acompanhar o que procura ficou mais simples.</p></div><UserRound size={36} strokeWidth={1.2} /></div><Profile /></section></Gate>; }
@@ -70,7 +111,38 @@ function CartContents() {
   if (query.error) return <ErrorPanel message={query.error} retry={query.reload} />;
   if (!query.data?.items.length) return <Empty title="O seu carrinho está à espera de uma descoberta" message="Explore as lojas locais e escolha os seus produtos ou serviços." href="/produtos" />;
   const cart = query.data;
-  return <><div className="cart-layout"><div className="cart-items">{cart.items.map((item) => <article className="cart-item" key={item.id}><div className="cart-item-art sage">{item.listing.kind === 'service' ? <Clock3 size={35} strokeWidth={1.2} /> : <Package size={35} strokeWidth={1.2} />}</div><div className="cart-item-info"><Link className="product-store" href={`/lojas/${item.listing.store.slug}`}>{item.listing.store.name}</Link><h3><Link href={`/${item.listing.kind === 'service' ? 'servicos' : 'produtos'}/${item.listing.slug}`}>{item.listing.name}</Link></h3><small>{money(item.unit_price)}{item.listing.is_demo && ' · Dados de teste'}</small><div className="cart-quantity"><Button variant="ghost" aria-label={`Diminuir quantidade de ${item.listing.name}`} disabled={busyId === item.id} onClick={() => change(item.id, item.quantity - 1)}><Minus size={13} /></Button><span>{item.quantity}</span><Button variant="ghost" aria-label={`Aumentar quantidade de ${item.listing.name}`} disabled={busyId === item.id || item.listing.kind === 'service'} onClick={() => change(item.id, item.quantity + 1)}><Plus size={13} /></Button></div></div><div className="cart-item-end"><strong>{money(item.subtotal)}</strong><button className="icon-button" aria-label={`Remover ${item.listing.name}`} disabled={busyId === item.id} onClick={() => change(item.id, 0)}><Trash2 size={17} /></button></div></article>)}</div><aside className="order-summary"><h2>Resumo do carrinho</h2><div><span>Artigos</span><strong>{money(cart.total)}</strong></div><p>O total final e os eventuais custos de entrega serão confirmados no checkout.</p><div className="summary-total"><span>Subtotal</span><strong>{money(cart.total)}</strong></div><Link className="button button-primary" href="/checkout">Continuar para encomenda<ArrowRight size={17} /></Link><span className="summary-security"><ShieldCheck size={15} />Preços validados no servidor</span></aside></div>{cart.is_demo && <DemoNotice />}</>;
+  const hasUnavailable = cart.items.some((item) => item.available === false || item.listing.status === 'archived');
+  return <>
+    {hasUnavailable && <div className="notice" role="alert">Há artigos que já não estão disponíveis. Remova-os do carrinho para continuar a encomenda.</div>}
+    <div className="cart-layout">
+      <div className="cart-items">{cart.items.map((item) => {
+        const unavailable = item.available === false || item.listing.status === 'archived';
+        return <article className="cart-item" key={item.id}>
+          <div className="cart-item-art sage">{item.listing.kind === 'service' ? <Clock3 size={35} strokeWidth={1.2} /> : <Package size={35} strokeWidth={1.2} />}</div>
+          <div className="cart-item-info">
+            <Link className="product-store" href={`/lojas/${item.listing.store.slug}`}>{item.listing.store.name}</Link>
+            <h3>{unavailable ? item.listing.name : <Link href={`/${item.listing.kind === 'service' ? 'servicos' : 'produtos'}/${item.listing.slug}`}>{item.listing.name}</Link>}</h3>
+            {unavailable && <Badge tone="orange">Indisponível</Badge>}
+            <small>{money(item.unit_price)}{item.listing.is_demo && ' · Dados de teste'}</small>
+            <div className="cart-quantity">
+              <Button variant="ghost" aria-label={`Diminuir quantidade de ${item.listing.name}`} disabled={busyId === item.id || unavailable} onClick={() => change(item.id, item.quantity - 1)}><Minus size={13} /></Button>
+              <span>{item.quantity}</span>
+              <Button variant="ghost" aria-label={`Aumentar quantidade de ${item.listing.name}`} disabled={busyId === item.id || unavailable || item.listing.kind === 'service'} onClick={() => change(item.id, item.quantity + 1)}><Plus size={13} /></Button>
+            </div>
+          </div>
+          <div className="cart-item-end"><strong>{money(item.subtotal)}</strong><button className="icon-button" aria-label={`Remover ${item.listing.name}`} disabled={busyId === item.id} onClick={() => change(item.id, 0)}><Trash2 size={17} /></button></div>
+        </article>;
+      })}</div>
+      <aside className="order-summary">
+        <h2>Resumo do carrinho</h2><div><span>Artigos</span><strong>{money(cart.total)}</strong></div>
+        <p>O total final e os eventuais custos de entrega serão confirmados no checkout.</p>
+        <div className="summary-total"><span>Subtotal</span><strong>{money(cart.total)}</strong></div>
+        {hasUnavailable ? <Button disabled>Remova os artigos indisponíveis</Button> : <Link className="button button-primary" href="/checkout">Continuar para encomenda<ArrowRight size={17} /></Link>}
+        <span className="summary-security"><ShieldCheck size={15} />Preços validados no servidor</span>
+      </aside>
+    </div>
+    {cart.is_demo && <DemoNotice />}
+  </>;
 }
 export function CartPage() { return <Gate><section className="container section-block"><div className="page-heading"><div><span className="eyebrow">AS SUAS ESCOLHAS</span><h1>O meu carrinho</h1><p>Produtos e serviços de várias lojas, numa só encomenda.</p></div><Link className="text-link" href="/produtos"><ArrowLeft size={16} />Continuar a explorar</Link></div><CartContents /></section></Gate>; }
 
